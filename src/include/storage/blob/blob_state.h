@@ -11,6 +11,7 @@
 #include <bit>
 #include <cassert>
 #include <cmath>
+#include <iostream>
 #include <span>
 
 namespace leanstore::storage::blob {
@@ -52,6 +53,28 @@ struct BlobState {
   ExtentList extents;
 
   // -------------------------------------------------------------------------------------
+
+    void print_float() {
+    std::cout << "BlobState: " << BlobID() << "\n";
+    int prefix_size = PREFIX_LENGTH / sizeof(float);
+    float *float_prefix = reinterpret_cast<float *>(blob_prefix);
+    std::cout << "Prefix: ";
+    for (int i = 0; i < prefix_size; i++) { std::cout << float_prefix[i] << ", "; }
+    std::cout << "\n";
+    std::cout << "Size: " << blob_size << "\n";
+  }
+
+  void print_float() const {
+   // std::cout << "BlobState: " << BlobID() << "\n";
+    int prefix_size = PREFIX_LENGTH / sizeof(float);
+    const float *float_prefix = reinterpret_cast<const float *>(blob_prefix);
+    std::cout << "Prefix: ";
+    for (int i = 0; i < prefix_size; i++) { std::cout << float_prefix[i] << ", "; }
+    std::cout << "\n";
+    //std::cout << "Size: " << blob_size << "\n";
+  }
+
+  
   auto operator!=(const BlobState &other) -> bool { return BlobID() != other.BlobID(); }
 
   auto BlobID() const -> UniqueID {
