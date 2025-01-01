@@ -27,7 +27,7 @@ if(ENABLE_TESTING)
   leanstore_add_test(TestLeanStoreAdapter adapters/test_leanstore_adapter.cc)
   leanstore_add_test(TestWiredTigerAdapter adapters/test_wiredtiger_adapter.cc)
   leanstore_add_test(TestFilesystemAdapter adapters/test_filesystem_adapter.cc)
-  leanstore_add_test(TestIVFlatNoCopy storage/vectordb/test_ivfflat_no_copy.cc main.cc)
+  leanstore_add_test(TestIVFlat storage/vectordb/test_ivfflat.cc main.cc)
   leanstore_add_test(TestIVFlatAdapter storage/vectordb/test_ivfflat_adapter.cc main.cc)
 endif()
 
