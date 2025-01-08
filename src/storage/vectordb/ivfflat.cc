@@ -1,53 +1,9 @@
 #include "storage/vectordb/ivfflat.h"
 #include "storage/vectordb/ivfflat_adapter.h"
+#include "storage/vectordb/util.h"
 #include <random>
 
 namespace leanstore::storage::vector {
-
-float distance_vec(std::span<const float> span1, std::span<const float> span2) {
-  assert(span1.size() == span2.size());
-
-  float sum = 0.0;
-  for (size_t i = 0; i < span1.size(); ++i) {
-    float diff = span1[i] - span2[i];
-    sum += diff * diff;
-  }
-
-  return std::sqrt(sum);
-}
-
-float distance_blob(VectorAdapter &db, const BlobState *blob_state_1, const BlobState *blob_state_2) {
-  assert(blob_state_1->blob_size == blob_state_2->blob_size);
-  float distance = 0.0;
-  db.LoadBlob(
-    blob_state_1,
-    [&](std::span<const uint8_t> blob1) {
-      std::span<const float> span1(reinterpret_cast<const float *>(blob1.data()), blob1.size() / sizeof(float));
-      db.LoadBlob(
-        blob_state_2,
-        [&](std::span<const uint8_t> blob2) {
-          std::span<const float> span2(reinterpret_cast<const float *>(blob2.data()), blob2.size() / sizeof(float));
-          distance = distance_vec(span1, span2);
-        },
-        false);
-    },
-    false);
-
-  return distance;
-}
-
-float distance_vec_blob(VectorAdapter &db, std::span<const float> input_span, const BlobState *blob_state) {
-  float distance = 0.0;
-  db.LoadBlob(
-    blob_state,
-    [&](std::span<const uint8_t> blob1) {
-      std::span<const float> span1(reinterpret_cast<const float *>(blob1.data()), blob1.size() / sizeof(float));
-      distance = distance_vec(span1, input_span);
-    },
-    false);
-
-  return distance;
-}
 
 int calculate_num_centroids(int num_vec) {
   if (num_vec < 3)
@@ -166,7 +122,7 @@ void update_one_centroid(VectorAdapter &db, std::vector<const BlobState *> bucke
   db.UpdateCentroid({key}, new_centroid_data);
 }
 
-IVFFlatNoCopyIndex::IVFFlatNoCopyIndex(VectorAdapter db, size_t num_centroids, size_t num_probe_centroids, size_t vector_size)
+IVFFlatIndex::IVFFlatIndex(VectorAdapter db, size_t num_centroids, size_t num_probe_centroids, size_t vector_size)
     : db(db), num_centroids(num_centroids), num_probe_centroids(num_probe_centroids), vector_size(vector_size) {
   std::cout << "Number of centroids: " << num_centroids << std::endl;
   std::cout << "Number of probe centroids: " << num_probe_centroids << std::endl;
@@ -174,7 +130,7 @@ IVFFlatNoCopyIndex::IVFFlatNoCopyIndex(VectorAdapter db, size_t num_centroids, s
   centroids.resize(num_centroids);
 }
 
-void IVFFlatNoCopyIndex::BuildIndex() {
+void IVFFlatIndex::build_index() {
   vectors_storage.resize(db.CountMain());
   vectors.resize(db.CountMain());
   int idx = 0;
@@ -190,13 +146,13 @@ void IVFFlatNoCopyIndex::BuildIndex() {
   assign_vectors_to_centroids();
 }
 
-void IVFFlatNoCopyIndex::update_centroids() {
+void IVFFlatIndex::update_centroids() {
   for (size_t i = 0; i < centroids.size(); i++) {
     update_one_centroid(db, centroids[i].bucket, {(int)i}, vector_size);
   }
 }
 
-void IVFFlatNoCopyIndex::assign_vectors_to_centroids() {
+void IVFFlatIndex::assign_vectors_to_centroids() {
   int max_iterations = 5;
   for (int i = 0; i < max_iterations; i++) {
     for (size_t i = 0; i < centroids.size(); i++) {
@@ -212,7 +168,7 @@ void IVFFlatNoCopyIndex::assign_vectors_to_centroids() {
   }
 }
 
-std::vector<const BlobState *> IVFFlatNoCopyIndex::find_n_closest_vectors(const std::vector<float> &input_vec, size_t n) {
+std::vector<const BlobState *> IVFFlatIndex::find_n_closest_vectors(const std::vector<float> &input_vec, size_t n) {
   std::vector<int> indices = find_k_closest_centroids(db, input_vec, num_probe_centroids);
   std::vector<const BlobState *> relevant_vector_states;
   for (size_t i = 0; i < indices.size(); i++) {
