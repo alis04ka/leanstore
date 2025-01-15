@@ -2,6 +2,8 @@
 #include "storage/vectordb/ivfflat_adapter.h"
 #include <iostream>
 
+#define TIME_INDEX
+
 namespace leanstore::storage::vector {
 
 template <typename T>
@@ -22,14 +24,14 @@ int calculate_num_probe_centroids(int num_centroids);
 int find_bucket(VectorAdapter &db, const BlobState *input_vec);
 std::vector<int> find_k_closest_centroids(VectorAdapter &db, const std::vector<float> &input_vec, size_t k);
 void initialize_centroids(VectorAdapter &db, size_t num_centroids);
-void update_one_centroid(VectorAdapter &db, std::vector<const BlobState *> bucket, const VectorRecord::Key &key, size_t vector_size);
+float update_one_centroid(VectorAdapter &db, std::vector<const BlobState *> bucket, const VectorRecord::Key &key, size_t vector_size);
 
 class IVFFlatIndex {
 public:
   IVFFlatIndex(VectorAdapter db, size_t num_centroids, size_t num_probe_centroids, size_t vector_size);
 
   void assign_vectors_to_centroids();
-  void update_centroids();
+  bool update_centroids();
   void build_index();
   std::vector<const BlobState *> find_n_closest_vectors(const std::vector<float> &input_vec, size_t n);
 

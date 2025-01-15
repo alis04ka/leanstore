@@ -8,124 +8,105 @@ namespace leanstore::storage::vector {
 NSWIndex::NSWIndex(std::vector<const BlobState *> &vertices)
     : vertices_(vertices) {}
 
-std::vector<size_t> select_neighbors(VectorAdapter &db, const std::vector<float> &input_vec, const std::vector<size_t> &vertex_ids, const std::vector<const BlobState *> &vertices, size_t m) {
+template <typename DistanceFunc>
+std::vector<size_t> select_neighbors_generic(DistanceFunc distance_func, const std::vector<size_t> &vertex_ids, size_t m) {
   std::vector<std::pair<float, size_t>> distances;
   distances.reserve(vertex_ids.size());
+
   for (const auto vert : vertex_ids) {
-    distances.emplace_back(distance_vec_blob(db, input_vec, vertices[vert]), vert);
+    distances.emplace_back(distance_func(vert), vert);
   }
+
   std::sort(distances.begin(), distances.end());
+
   std::vector<size_t> selected_vs;
-  selected_vs.reserve(vertex_ids.size());
+  selected_vs.reserve(std::min(m, distances.size()));
   for (size_t i = 0; i < m && i < distances.size(); i++) {
     selected_vs.emplace_back(distances[i].second);
   }
+
   return selected_vs;
 }
 
-std::vector<size_t> select_neighbors(VectorAdapter &db, const BlobState *input_vec, const std::vector<size_t> &vertex_ids, const std::vector<const BlobState *> &vertices, size_t m) {
-  std::vector<std::pair<float, size_t>> distances;
-  distances.reserve(vertex_ids.size());
-  for (const auto vert : vertex_ids) {
-    distances.emplace_back(distance_blob(db, input_vec, vertices[vert]), vert);
+std::vector<size_t> select_neighbors_float(VectorAdapter &db, const std::vector<float> &input_vec, const std::vector<size_t> &vertex_ids, const std::vector<const BlobState *> &vertices, size_t m) {
+  auto distance_func = [&](size_t vert) {
+    return distance_vec_blob(db, input_vec, vertices[vert]);
+  };
+  return select_neighbors_generic(distance_func, vertex_ids, m);
+}
+
+std::vector<size_t> select_neighbors_blob(VectorAdapter &db, const BlobState *input_vec, const std::vector<size_t> &vertex_ids, const std::vector<const BlobState *> &vertices, size_t m) {
+  auto distance_func = [&](size_t vert) {
+    return distance_blob(db, input_vec, vertices[vert]);
+  };
+  return select_neighbors_generic(distance_func, vertex_ids, m);
+}
+
+template <typename VectorType, typename DistanceFunc>
+std::vector<size_t> NSWIndex::search_layer_template(VectorAdapter &db, const VectorType &base_vector, size_t limit, const std::vector<size_t> &entry_points, DistanceFunc distance_func) {
+  assert(limit > 0);
+  std::vector<size_t> candidates;
+  std::unordered_set<size_t> visited;
+  std::priority_queue<std::pair<float, size_t>, std::vector<std::pair<float, size_t>>, std::greater<>> explore_q;
+  std::priority_queue<std::pair<float, size_t>, std::vector<std::pair<float, size_t>>, std::less<>> result_set;
+
+  for (const auto entry_point : entry_points) {
+    float dist = distance_func(db, base_vector, vertices_[entry_point]);
+    explore_q.emplace(dist, entry_point);
+    result_set.emplace(dist, entry_point);
+    visited.emplace(entry_point);
   }
-  std::sort(distances.begin(), distances.end());
-  std::vector<size_t> selected_vs;
-  selected_vs.reserve(vertex_ids.size());
-  for (size_t i = 0; i < m && i < distances.size(); i++) {
-    selected_vs.emplace_back(distances[i].second);
+
+  while (!explore_q.empty()) {
+    auto [dist, vertex] = explore_q.top();
+    explore_q.pop();
+
+    if (dist > result_set.top().first) {
+      break;
+    }
+
+    assert(in_vertices_.size() <= 1 || !edges_[vertex].empty());
+
+    for (const auto &neighbor : edges_[vertex]) {
+      if (visited.find(neighbor) == visited.end()) {
+        visited.emplace(neighbor);
+        auto dist = distance_func(db, base_vector, vertices_[neighbor]);
+        explore_q.emplace(dist, neighbor);
+        result_set.emplace(dist, neighbor);
+
+        while (result_set.size() > limit) {
+          result_set.pop();
+        }
+      }
+    }
   }
-  return selected_vs;
+
+  while (!result_set.empty()) {
+    candidates.push_back(result_set.top().second);
+    result_set.pop();
+  }
+
+  std::reverse(candidates.begin(), candidates.end());
+  return candidates;
 }
 
 std::vector<size_t> NSWIndex::search_layer(VectorAdapter &db, const std::vector<float> &base_vector, size_t limit, const std::vector<size_t> &entry_points) {
-  assert(limit > 0);
-  std::vector<size_t> candidates;
-  std::unordered_set<size_t> visited;
-  std::priority_queue<std::pair<float, size_t>, std::vector<std::pair<float, size_t>>, std::greater<>> explore_q;
-  std::priority_queue<std::pair<float, size_t>, std::vector<std::pair<float, size_t>>, std::less<>> result_set;
-  for (const auto entry_point : entry_points) {
-    float dist = distance_vec_blob(db,  base_vector, vertices_[entry_point]);
-    explore_q.emplace(dist, entry_point);
-    result_set.emplace(dist, entry_point);
-    visited.emplace(entry_point);
-  }
-  while (!explore_q.empty()) {
-    auto [dist, vertex] = explore_q.top();
-    explore_q.pop();
-    if (dist > result_set.top().first) {
-      break;
-    }
-    // std::cout <<  "vertices size " << in_vertices_.size() << std::endl;
-    // std::cout <<  "edges size " << edges_[vertex].size() << std::endl;
-    // std::cout << "-----------"<< std::endl;
-    assert(in_vertices_.size() <= 1 || !edges_[vertex].empty());
-    for (const auto &neighbor : edges_[vertex]) {
-      if (visited.find(neighbor) == visited.end()) {
-        visited.emplace(neighbor);
-        auto dist = distance_vec_blob(db,  base_vector, vertices_[neighbor]);
-        explore_q.emplace(dist, neighbor);
-        result_set.emplace(dist, neighbor);
-        while (result_set.size() > limit) {
-          result_set.pop();
-        }
-      }
-    }
-  }
-  while (!result_set.empty()) {
-    candidates.push_back(result_set.top().second);
-    result_set.pop();
-  }
-  std::reverse(candidates.begin(), candidates.end());
-  return candidates;
+  return search_layer_template(db, base_vector,limit, entry_points,
+    [](VectorAdapter &db, const auto &base_vector, const auto &vertex) {
+      return distance_vec_blob(db, base_vector, vertex);
+    });
 }
 
 std::vector<size_t> NSWIndex::search_layer(VectorAdapter &db, const BlobState *base_vector, size_t limit, const std::vector<size_t> &entry_points) {
-  assert(limit > 0);
-  std::vector<size_t> candidates;
-  std::unordered_set<size_t> visited;
-  std::priority_queue<std::pair<float, size_t>, std::vector<std::pair<float, size_t>>, std::greater<>> explore_q;
-  std::priority_queue<std::pair<float, size_t>, std::vector<std::pair<float, size_t>>, std::less<>> result_set;
-  for (const auto entry_point : entry_points) {
-    float dist = distance_blob(db, vertices_[entry_point], base_vector);
-    explore_q.emplace(dist, entry_point);
-    result_set.emplace(dist, entry_point);
-    visited.emplace(entry_point);
-  }
-  while (!explore_q.empty()) {
-    auto [dist, vertex] = explore_q.top();
-    explore_q.pop();
-    if (dist > result_set.top().first) {
-      break;
-    }
-    // std::cout <<  "vertices size " << in_vertices_.size() << std::endl;
-    // std::cout <<  "edges size " << edges_[vertex].size() << std::endl;
-    // std::cout << "-----------"<< std::endl;
-    assert(in_vertices_.size() <= 1 || !edges_[vertex].empty());
-    for (const auto &neighbor : edges_[vertex]) {
-      if (visited.find(neighbor) == visited.end()) {
-        visited.emplace(neighbor);
-        auto dist = distance_blob(db, vertices_[neighbor], base_vector);
-        explore_q.emplace(dist, neighbor);
-        result_set.emplace(dist, neighbor);
-        while (result_set.size() > limit) {
-          result_set.pop();
-        }
-      }
-    }
-  }
-  while (!result_set.empty()) {
-    candidates.push_back(result_set.top().second);
-    result_set.pop();
-  }
-  std::reverse(candidates.begin(), candidates.end());
-  return candidates;
+  return search_layer_template(db, base_vector, limit, entry_points,
+    [](VectorAdapter &db, const auto &base_vector, const auto &vertex) {
+      return distance_blob(db, vertex, base_vector);
+    });
 }
 
 auto NSWIndex::add_vertex(size_t vertex_id) {
   in_vertices_.push_back(vertex_id);
 }
-
 
 void NSWIndex::connect(size_t vertex_a, size_t vertex_b) {
   edges_[vertex_a].push_back(vertex_b);
@@ -136,7 +117,6 @@ HNSWIndex::HNSWIndex(VectorAdapter db)
     : db(db) {
   std::random_device rand_dev;
   generator_ = std::mt19937(rand_dev());
-  vertex_id = 0;
   vectors_storage.resize(db.CountMain());
   vectors.resize(db.CountMain());
   int idx = 0;
@@ -153,11 +133,8 @@ HNSWIndex::HNSWIndex(VectorAdapter db)
 }
 
 void HNSWIndex::build_index() {
-  int i = 0;
   for (const BlobState *vertex : vectors) {
-    // std::cout << "insert vector entry "<< i << std::endl;
     insert_vector_entry(vertex);
-    i++;
   }
 }
 
@@ -165,11 +142,11 @@ std::vector<size_t> HNSWIndex::scan_vector_entry(const std::vector<float> &base_
   std::vector<size_t> entry_points{layers_[layers_.size() - 1].default_entry_point()};
   for (int level = layers_.size() - 1; level >= 1; level--) {
     auto nearest_elements = layers_[level].search_layer(db, base_vector, ef_search_, entry_points);
-    nearest_elements = select_neighbors(db, base_vector, nearest_elements, vertices_, 1);
+    nearest_elements = select_neighbors_float(db, base_vector, nearest_elements, vertices_, 1);
     entry_points = {nearest_elements[0]};
   }
   auto neighbors = layers_[0].search_layer(db, base_vector, limit > ef_search_ ? limit : ef_search_, entry_points);
-  neighbors = select_neighbors(db, base_vector, neighbors, vertices_, limit);
+  neighbors = select_neighbors_float(db, base_vector, neighbors, vertices_, limit);
   return neighbors;
 }
 
@@ -191,14 +168,14 @@ void HNSWIndex::insert_vector_entry(const BlobState *key) {
     for (; level > target_level; level--) {
       // std::cout << "level " << level << std::endl;
       nearest_elements = layers_[level].search_layer(db, key, ef_search_, entry_points);
-      nearest_elements = select_neighbors(db, key, nearest_elements, vertices_, 1);
+      nearest_elements = select_neighbors_blob(db, key, nearest_elements, vertices_, 1);
       entry_points = {nearest_elements[0]};
     }
     for (; level >= 0; level--) {
       auto &layer = layers_[level];
       // std::cout << "level " << level << std::endl;
       nearest_elements = layer.search_layer(db, key, ef_construction_, entry_points);
-      auto neighbors = select_neighbors(db, key, nearest_elements, vertices_, m_);
+      auto neighbors = select_neighbors_blob(db, key, nearest_elements, vertices_, m_);
       layer.add_vertex(vertex_id);
       for (const auto neighbor : neighbors) {
         layer.connect(vertex_id, neighbor);
@@ -206,7 +183,7 @@ void HNSWIndex::insert_vector_entry(const BlobState *key) {
       for (const auto neighbor : neighbors) {
         auto &edges = layer.edges_[neighbor];
         if (edges.size() > m_max_) {
-          auto new_neighbors = select_neighbors(db, vertices_[neighbor], edges, vertices_, layer.m_max_);
+          auto new_neighbors = select_neighbors_blob(db, vertices_[neighbor], edges, vertices_, layer.m_max_);
           edges = new_neighbors;
         }
       }

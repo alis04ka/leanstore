@@ -29,7 +29,6 @@ if(ENABLE_TESTING)
   leanstore_add_test(TestFilesystemAdapter adapters/test_filesystem_adapter.cc)
   leanstore_add_test(TestIVFlat storage/vectordb/test_ivfflat.cc main.cc)
   leanstore_add_test(TestIVFlatAdapter storage/vectordb/test_ivfflat_adapter.cc main.cc)
-  leanstore_add_test(TestNSW storage/vectordb/test_nsw.cc main.cc)
   leanstore_add_test(TestHNSW storage/vectordb/test_hnsw.cc main.cc)
 endif()
 

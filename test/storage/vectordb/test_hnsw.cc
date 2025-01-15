@@ -11,7 +11,7 @@ TEST(NSW, BuildIndex) {
   leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
     leanstore->StartTransaction();
 
-    int num_vec = 1000;
+    int num_vec = 10000;
     size_t vector_size = 1000;
 
     for (int id = 0; id < num_vec; ++id) {
