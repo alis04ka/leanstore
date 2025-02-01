@@ -4,14 +4,14 @@
 
 using namespace leanstore::storage::vector;
 
-TEST(NSW, BuildIndex) {
+TEST(HNSW, BuildIndex) {
   auto leanstore = std::make_unique<leanstore::LeanStore>();
   VectorAdapter db = VectorAdapter(*leanstore);
 
   leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
     leanstore->StartTransaction();
 
-    int num_vec = 10000;
+    int num_vec = 2000;
     size_t vector_size = 1000;
 
     for (int id = 0; id < num_vec; ++id) {
@@ -31,6 +31,8 @@ TEST(NSW, BuildIndex) {
     for (size_t i = 0; i < res.size(); i++) {
       std::cout << res[i] << std::endl;
     }
+
+    std::cout << "Search time: " << get_search_time_hnsw() << " μs" << std::endl;
 
     leanstore->CommitTransaction();
   });

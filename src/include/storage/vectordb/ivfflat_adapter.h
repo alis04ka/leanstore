@@ -1,13 +1,13 @@
 #pragma once
 
-#include <typeindex>
 #include "leanstore/kv_interface.h"
 #include "leanstore/leanstore.h"
 #include "schema.h"
+#include <typeindex>
 
 namespace leanstore::storage::vector {
 
-using FoundVectorFunc  = std::function<bool(const VectorRecord::Key &, const VectorRecord &)>;
+using FoundVectorFunc = std::function<bool(const VectorRecord::Key &, const VectorRecord &)>;
 using AccessVectorFunc = std::function<void(const VectorRecord &)>;
 using ModifyVectorFunc = std::function<void(VectorRecord &)>;
 
@@ -16,7 +16,7 @@ static constexpr uint64_t GLOBAL_BLOCK_SIZE = 4096;
 struct CentroidType {};
 
 struct VectorAdapter {
- private:
+private:
   std::type_index relation_;
   std::type_index centroid_relation_;
   leanstore::LeanStore *db_;
@@ -26,7 +26,7 @@ struct VectorAdapter {
   void ScanImpl(const VectorRecord::Key &r_key, const FoundVectorFunc &found_record_cb, bool scan_ascending);
   void ScanCentroidsImpl(const VectorRecord::Key &r_key, const FoundVectorFunc &found_record_cb, bool scan_ascending);
 
- public:
+public:
   explicit VectorAdapter(leanstore::LeanStore &db);
   ~VectorAdapter() = default;
 
@@ -56,4 +56,4 @@ struct VectorAdapter {
 
 static_assert(GLOBAL_BLOCK_SIZE == leanstore::BLK_BLOCK_SIZE);
 
-}  // namespace leanstore::storage::vector
+} // namespace leanstore::storage::vector

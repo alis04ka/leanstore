@@ -27,9 +27,11 @@ if(ENABLE_TESTING)
   leanstore_add_test(TestLeanStoreAdapter adapters/test_leanstore_adapter.cc)
   leanstore_add_test(TestWiredTigerAdapter adapters/test_wiredtiger_adapter.cc)
   leanstore_add_test(TestFilesystemAdapter adapters/test_filesystem_adapter.cc)
-  leanstore_add_test(TestIVFlat storage/vectordb/test_ivfflat.cc main.cc)
-  leanstore_add_test(TestIVFlatAdapter storage/vectordb/test_ivfflat_adapter.cc main.cc)
+  leanstore_add_test(TestIVFFlat storage/vectordb/test_ivfflat.cc main.cc)
+  leanstore_add_test(TestIVFFlatVec storage/vectordb/test_ivfflat_vec.cc main.cc)
+  leanstore_add_test(TestIVFFlatAdapter storage/vectordb/test_ivfflat_adapter.cc main.cc)
   leanstore_add_test(TestHNSW storage/vectordb/test_hnsw.cc main.cc)
+  leanstore_add_test(TestHNSWVec storage/vectordb/test_hnsw_vec.cc main.cc)
 endif()
 
 # ---------------------------------------------------------------------------

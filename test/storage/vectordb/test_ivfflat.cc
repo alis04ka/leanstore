@@ -1,5 +1,5 @@
-#include "storage/vectordb/ivfflat_adapter.h"
 #include "storage/vectordb/ivfflat.h"
+#include "storage/vectordb/ivfflat_adapter.h"
 #include "storage/vectordb/util.h"
 #include "gtest/gtest.h"
 
@@ -422,7 +422,7 @@ TEST(IVFFlat, BuildIndexAndLookup) {
   leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
     leanstore->StartTransaction();
 
-    int num_vec = 1000;
+    int num_vec = 10000;
     int num_centroids = calculate_num_centroids(num_vec);
     int num_probe_centroids = calculate_num_probe_centroids(num_centroids);
     size_t vector_size = 1000;
@@ -450,6 +450,8 @@ TEST(IVFFlat, BuildIndexAndLookup) {
       ASSERT_EQ(res[0], expected_results[i]) << "Mismatch at index " << i;
       std::cout << res[0] << std::endl;
     }
+
+    std::cout << "Search time: " << get_search_time_ivfflat() << " μs" << std::endl;
 
     leanstore->CommitTransaction();
   });

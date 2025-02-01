@@ -1,5 +1,5 @@
-#include "storage/vectordb/ivfflat_adapter.h"
 #include "storage/vectordb/ivfflat.h"
+#include "storage/vectordb/ivfflat_adapter.h"
 #include "gtest/gtest.h"
 
 using namespace leanstore::storage::vector;

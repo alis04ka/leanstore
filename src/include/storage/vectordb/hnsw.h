@@ -1,12 +1,16 @@
 #include "storage/vectordb/ivfflat_adapter.h"
 #include <random>
 
+#define TIME_INDEX
+
 namespace leanstore::storage::vector {
+
+double get_search_time_hnsw();
 
 class NSWIndex {
 private:
   std::vector<const BlobState *> &vertices_;
-  size_t m_max_;
+  size_t m_max_ = 5;
   std::unordered_map<size_t, std::vector<size_t>> edges_{};
   std::vector<size_t> in_vertices_{};
 

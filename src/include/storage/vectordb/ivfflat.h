@@ -20,6 +20,7 @@ struct Centroid {
 
 int calculate_num_centroids(int num_vec);
 int calculate_num_probe_centroids(int num_centroids);
+double get_search_time_ivfflat();
 
 int find_bucket(VectorAdapter &db, const BlobState *input_vec);
 std::vector<int> find_k_closest_centroids(VectorAdapter &db, const std::vector<float> &input_vec, size_t k);
