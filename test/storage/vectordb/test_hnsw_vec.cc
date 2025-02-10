@@ -3,9 +3,9 @@
 
 using namespace leanstore::storage::vector;
 
-TEST(HNSW, BuildIndex) {
+TEST(HNSWVec, BuildIndex) {
 
-  int num_vec = 2000;
+  int num_vec = 10000;
   size_t vector_size = 1000;
 
   std::vector<std::vector<float>> vectors;

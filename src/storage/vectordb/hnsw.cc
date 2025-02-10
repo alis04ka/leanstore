@@ -1,5 +1,4 @@
 #include "storage/vectordb/hnsw.h"
-#include "storage/vectordb/ivfflat_adapter.h"
 #include "storage/vectordb/timer.h"
 #include "storage/vectordb/util.h"
 #include <random>
@@ -45,22 +44,22 @@ std::vector<size_t> select_neighbors_generic(DistanceFunc distance_func, const s
   return selected_vs;
 }
 
-std::vector<size_t> select_neighbors_float(VectorAdapter &db, const std::vector<float> &input_vec, const std::vector<size_t> &vertex_ids, const std::vector<const BlobState *> &vertices, size_t m) {
+std::vector<size_t> select_neighbors_float(BlobAdapter &adapter, const std::vector<float> &input_vec, const std::vector<size_t> &vertex_ids, const std::vector<const BlobState *> &vertices, size_t m) {
   auto distance_func = [&](size_t vert) {
-    return distance_vec_blob(db, input_vec, vertices[vert]);
+    return distance_vec_blob(adapter, input_vec, vertices[vert]);
   };
   return select_neighbors_generic(distance_func, vertex_ids, m);
 }
 
-std::vector<size_t> select_neighbors_blob(VectorAdapter &db, const BlobState *input_vec, const std::vector<size_t> &vertex_ids, const std::vector<const BlobState *> &vertices, size_t m) {
+std::vector<size_t> select_neighbors_blob(BlobAdapter &adapter, const BlobState *input_vec, const std::vector<size_t> &vertex_ids, const std::vector<const BlobState *> &vertices, size_t m) {
   auto distance_func = [&](size_t vert) {
-    return distance_blob(db, input_vec, vertices[vert]);
+    return distance_blob(adapter, input_vec, vertices[vert]);
   };
   return select_neighbors_generic(distance_func, vertex_ids, m);
 }
 
 template <typename VectorType, typename DistanceFunc>
-std::vector<size_t> NSWIndex::search_layer_template(VectorAdapter &db, const VectorType &base_vector, size_t limit, const std::vector<size_t> &entry_points, DistanceFunc distance_func) {
+std::vector<size_t> NSWIndex::search_layer_template(BlobAdapter &adapter, const VectorType &base_vector, size_t limit, const std::vector<size_t> &entry_points, DistanceFunc distance_func) {
   assert(limit > 0);
   std::vector<size_t> candidates;
   std::unordered_set<size_t> visited;
@@ -68,7 +67,7 @@ std::vector<size_t> NSWIndex::search_layer_template(VectorAdapter &db, const Vec
   std::priority_queue<std::pair<float, size_t>, std::vector<std::pair<float, size_t>>, std::less<>> result_set;
 
   for (const auto entry_point : entry_points) {
-    float dist = distance_func(db, base_vector, vertices_[entry_point]);
+    float dist = distance_func(adapter, base_vector, vertices_[entry_point]);
     explore_q.emplace(dist, entry_point);
     result_set.emplace(dist, entry_point);
     visited.emplace(entry_point);
@@ -87,7 +86,7 @@ std::vector<size_t> NSWIndex::search_layer_template(VectorAdapter &db, const Vec
     for (const auto &neighbor : edges_[vertex]) {
       if (visited.find(neighbor) == visited.end()) {
         visited.emplace(neighbor);
-        auto dist = distance_func(db, base_vector, vertices_[neighbor]);
+        auto dist = distance_func(adapter, base_vector, vertices_[neighbor]);
         explore_q.emplace(dist, neighbor);
         result_set.emplace(dist, neighbor);
 
@@ -107,15 +106,15 @@ std::vector<size_t> NSWIndex::search_layer_template(VectorAdapter &db, const Vec
   return candidates;
 }
 
-std::vector<size_t> NSWIndex::search_layer(VectorAdapter &db, const std::vector<float> &base_vector, size_t limit, const std::vector<size_t> &entry_points) {
-  return search_layer_template(db, base_vector, limit, entry_points, [](VectorAdapter &db, const auto &base_vector, const auto &vertex) {
-    return distance_vec_blob(db, base_vector, vertex);
+std::vector<size_t> NSWIndex::search_layer(BlobAdapter &adapter, const std::vector<float> &base_vector, size_t limit, const std::vector<size_t> &entry_points) {
+  return search_layer_template(adapter, base_vector, limit, entry_points, [](BlobAdapter &adpt, const auto &base_vector, const auto &vertex) {
+    return distance_vec_blob(adpt, base_vector, vertex);
   });
 }
 
-std::vector<size_t> NSWIndex::search_layer(VectorAdapter &db, const BlobState *base_vector, size_t limit, const std::vector<size_t> &entry_points) {
-  return search_layer_template(db, base_vector, limit, entry_points, [](VectorAdapter &db, const auto &base_vector, const auto &vertex) {
-    return distance_blob(db, vertex, base_vector);
+std::vector<size_t> NSWIndex::search_layer(BlobAdapter &adapter, const BlobState *base_vector, size_t limit, const std::vector<size_t> &entry_points) {
+  return search_layer_template(adapter, base_vector, limit, entry_points, [](BlobAdapter &adpt, const auto &base_vector, const auto &vertex) {
+    return distance_blob(adpt, vertex, base_vector);
   });
 }
 
@@ -128,12 +127,16 @@ void NSWIndex::connect(size_t vertex_a, size_t vertex_b) {
   edges_[vertex_b].push_back(vertex_a);
 }
 
-HNSWIndex::HNSWIndex(VectorAdapter db)
-    : db(db) {
-  std::random_device rand_dev;
-  generator_ = std::mt19937(rand_dev());
-  vectors_storage.resize(db.CountMain());
-  vectors.resize(db.CountMain());
+inline size_t compute_m_max(size_t N, size_t m_min = 4, size_t alpha = 2) {
+  if (N < 2) return m_min; 
+  return std::max(m_min, static_cast<size_t>(std::floor(alpha * std::log(static_cast<double>(N)))));
+}
+
+HNSWIndex::HNSWIndex(VectorAdapter db, BlobAdapter blob_adapter, size_t ef_construction, size_t ef_search, size_t m_max)
+    : db(db), blob_adapter(blob_adapter), ef_construction_(ef_construction), ef_search_(ef_search), m_max_(m_max) {
+  vector_size = db.Count();
+  vectors_storage.resize(vector_size);
+  vectors.resize(vector_size);
   int idx = 0;
   db.Scan({0},
     [&](const VectorRecord::Key &key, const VectorRecord &record) {
@@ -145,6 +148,11 @@ HNSWIndex::HNSWIndex(VectorAdapter db)
     });
   layers_.reserve(100);
   layers_.emplace_back(vertices_);
+  m_max = compute_m_max(vector_size);
+  std::cout << "m max is " << m_max << std::endl;
+  m_l_ = 1.0 / std::log(m_max);
+  std::random_device rand_dev;
+  generator_ = std::mt19937(rand_dev());
 }
 
 void HNSWIndex::build_index() {
@@ -153,21 +161,21 @@ void HNSWIndex::build_index() {
     insert_vector_entry(vertex);
   }
   END_TIMER(t, build_index_time);
-#ifdef TIME_INDEX
-  report_timing();
-#endif
+  #ifdef TIME_INDEX
+    report_timing();
+  #endif
 }
 
 std::vector<size_t> HNSWIndex::scan_vector_entry(const std::vector<float> &base_vector, size_t limit) {
   START_TIMER(t);
   std::vector<size_t> entry_points{layers_[layers_.size() - 1].default_entry_point()};
   for (int level = layers_.size() - 1; level >= 1; level--) {
-    auto nearest_elements = layers_[level].search_layer(db, base_vector, ef_search_, entry_points);
-    nearest_elements = select_neighbors_float(db, base_vector, nearest_elements, vertices_, 1);
+    auto nearest_elements = layers_[level].search_layer(blob_adapter, base_vector, ef_search_, entry_points);
+    nearest_elements = select_neighbors_float(blob_adapter, base_vector, nearest_elements, vertices_, 1);
     entry_points = {nearest_elements[0]};
   }
-  auto neighbors = layers_[0].search_layer(db, base_vector, limit > ef_search_ ? limit : ef_search_, entry_points);
-  neighbors = select_neighbors_float(db, base_vector, neighbors, vertices_, limit);
+  auto neighbors = layers_[0].search_layer(blob_adapter, base_vector, limit > ef_search_ ? limit : ef_search_, entry_points);
+  neighbors = select_neighbors_float(blob_adapter, base_vector, neighbors, vertices_, limit);
   END_TIMER(t, search_time);
   return neighbors;
 }
@@ -182,7 +190,6 @@ void HNSWIndex::insert_vector_entry(const BlobState *key) {
   std::uniform_real_distribution<double> level_dist(0.0, 1.0);
   auto vertex_id = add_vertex(key);
   int target_level = static_cast<int>(std::floor(-std::log(level_dist(generator_)) * m_l_));
-  target_level = 3;
   assert(target_level >= 0);
   std::vector<size_t> nearest_elements;
   if (!layers_[0].in_vertices_.empty()) {
@@ -190,15 +197,15 @@ void HNSWIndex::insert_vector_entry(const BlobState *key) {
     int level = layers_.size() - 1;
     for (; level > target_level; level--) {
       // std::cout << "level " << level << std::endl;
-      nearest_elements = layers_[level].search_layer(db, key, ef_search_, entry_points);
-      nearest_elements = select_neighbors_blob(db, key, nearest_elements, vertices_, 1);
+      nearest_elements = layers_[level].search_layer(blob_adapter, key, ef_search_, entry_points);
+      nearest_elements = select_neighbors_blob(blob_adapter, key, nearest_elements, vertices_, 1);
       entry_points = {nearest_elements[0]};
     }
     for (; level >= 0; level--) {
       auto &layer = layers_[level];
       // std::cout << "level " << level << std::endl;
-      nearest_elements = layer.search_layer(db, key, ef_construction_, entry_points);
-      auto neighbors = select_neighbors_blob(db, key, nearest_elements, vertices_, m_);
+      nearest_elements = layer.search_layer(blob_adapter, key, ef_construction_, entry_points);
+      auto neighbors = select_neighbors_blob(blob_adapter, key, nearest_elements, vertices_, m_max_);
       layer.add_vertex(vertex_id);
       for (const auto neighbor : neighbors) {
         layer.connect(vertex_id, neighbor);
@@ -206,7 +213,7 @@ void HNSWIndex::insert_vector_entry(const BlobState *key) {
       for (const auto neighbor : neighbors) {
         auto &edges = layer.edges_[neighbor];
         if (edges.size() > m_max_) {
-          auto new_neighbors = select_neighbors_blob(db, vertices_[neighbor], edges, vertices_, layer.m_max_);
+          auto new_neighbors = select_neighbors_blob(blob_adapter, vertices_[neighbor], edges, vertices_, m_max_);
           edges = new_neighbors;
         }
       }

@@ -1,3 +1,4 @@
+#pragma once
 #include "common/typedefs.h"
 #include <chrono>
 

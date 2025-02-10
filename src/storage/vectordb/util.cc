@@ -35,7 +35,7 @@ float distance_vec(std::span<const float> span1, std::span<const float> span2) {
   return std::sqrt(sum);
 }
 
-float distance_blob(VectorAdapter &db, const BlobState *blob_state_1, const BlobState *blob_state_2) {
+float distance_blob(BlobAdapter &db, const BlobState *blob_state_1, const BlobState *blob_state_2) {
   assert(blob_state_1->blob_size == blob_state_2->blob_size);
   if (blob_state_1 == blob_state_2) {
     return 0.0;
@@ -57,7 +57,7 @@ float distance_blob(VectorAdapter &db, const BlobState *blob_state_1, const Blob
   return distance;
 }
 
-float distance_vec_blob(VectorAdapter &db, std::span<const float> input_span, const BlobState *blob_state) {
+float distance_vec_blob(BlobAdapter &db, std::span<const float> input_span, const BlobState *blob_state) {
   float distance = 0.0;
   db.LoadBlob(
     blob_state,
