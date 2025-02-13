@@ -1,6 +1,5 @@
 #include "storage/vectordb/hnsw.h"
 #include "storage/vectordb/util.h"
-//#include "storage/vectordb/vector_adapter.h"
 #include "gtest/gtest.h"
 
 using namespace leanstore::storage::vector;
@@ -41,28 +40,7 @@ using namespace leanstore::storage::vector;
 //   leanstore->Shutdown();
 // }
 
-std::vector<size_t> knn(const std::vector<float> &query,
-                        const std::vector<std::vector<float>> &data,
-                        size_t k)
-{
-    std::vector<std::pair<float, size_t>> distIdx;
-    distIdx.reserve(data.size());
 
-    for(size_t i = 0; i < data.size(); ++i) {
-        float dist = distance_vec(query, data[i]);
-        distIdx.emplace_back(dist, i);
-    }
-
-    std::sort(distIdx.begin(), distIdx.end(),
-              [](auto &l, auto &r){ return l.first < r.first; });
-
-    std::vector<size_t> neighbors;
-    neighbors.reserve(k);
-    for(size_t i = 0; i < k && i < distIdx.size(); ++i) {
-        neighbors.push_back(distIdx[i].second);
-    }
-    return neighbors;
-}
 
 
 TEST(HNSW, BuildIndexNonTrivial) {
@@ -73,10 +51,10 @@ TEST(HNSW, BuildIndexNonTrivial) {
   leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
     leanstore->StartTransaction();
 
-    int num_vec = 1000;
-    size_t vector_size = 100;
+    int num_vec = 400;
+    size_t vector_size = 2000;
 
-    std::mt19937 rng(24);
+    std::mt19937 rng(std::random_device{}());
     std::uniform_real_distribution<float> dist(0.0f, 10.0f);
     std::vector<std::vector<float>> all_vecs;
     all_vecs.reserve(num_vec);
@@ -109,28 +87,28 @@ TEST(HNSW, BuildIndexNonTrivial) {
     std::cout << std::endl;
 
     std::vector<size_t> res_hnsw = index.scan_vector_entry(search_vector, 10);
-    std::vector<size_t> res_knn = knn(search_vector, all_vecs, 10);
+    // std::vector<size_t> res_knn = knn(search_vector, all_vecs, 10);
 
-    std::cout << "\nResult hnsw: " << std::endl;
-    for (auto neighbor_id : res_hnsw) {
-      const leanstore::BlobState *state = index.vectors[neighbor_id];
-      std::vector<float> vec = db.GetFloatVectorFromBlobState(state);
-      for (int i = 0; i < 5; ++i) {
-        std::cout << vec[i] << " ";
-      }
-      std::cout << std::endl;
-    }
+    // std::cout << "\nResult hnsw: " << std::endl;
+    // for (auto neighbor_id : res_hnsw) {
+    //   const leanstore::BlobState *state = index.vectors[neighbor_id];
+    //   std::vector<float> vec = blob_adapter.GetFloatVectorFromBlobState(state);
+    //   for (int i = 0; i < 5; ++i) {
+    //     std::cout << vec[i] << " ";
+    //   }
+    //   std::cout << std::endl;
+    // }
 
-    std::cout << "Result knn: " << std::endl;
-    for (auto neighbor_id : res_knn) {
-      for (int i = 0; i < 5; ++i) {
-        std::cout << all_vecs[neighbor_id][i] << " ";
-      }
-      std::cout << std::endl;
-    }
+    // std::cout << "Result knn: " << std::endl;
+    // for (auto neighbor_id : res_knn) {
+    //   for (int i = 0; i < 5; ++i) {
+    //     std::cout << all_vecs[neighbor_id][i] << " ";
+    //   }
+    //   std::cout << std::endl;
+    // }
 
-
-    std::cout << "\nSearch time hnsw: " << get_search_time_hnsw() << " μs" << std::endl;
+    // std::cout << "\nSearch time hnsw: " << get_search_time_hnsw() << " μs" << std::endl;
+    // float error = knn_hnsw_error(search_vector, res_knn, res_hnsw, all_vecs);
 
     leanstore->CommitTransaction();
   });

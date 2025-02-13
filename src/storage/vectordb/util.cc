@@ -1,13 +1,13 @@
 #include "storage/vectordb/util.h"
-#include "storage/vectordb/timer.h"
 
 namespace leanstore::storage::vector {
 
 float distance_vec(std::span<const float> span1, std::span<const float> span2) {
+  std::cout << "distance vec" <<  std::endl;
   assert(span1.size() == span2.size());
 
   size_t size = span1.size();
-  size_t simd_width = 8; 
+  size_t simd_width = 8;
   size_t simd_end = size - (size % simd_width);
 
   __m256 sum_vec = _mm256_setzero_ps();
@@ -36,6 +36,7 @@ float distance_vec(std::span<const float> span1, std::span<const float> span2) {
 }
 
 float distance_blob(BlobAdapter &db, const BlobState *blob_state_1, const BlobState *blob_state_2) {
+  std::cout << "distance blob" <<  std::endl;
   assert(blob_state_1->blob_size == blob_state_2->blob_size);
   if (blob_state_1 == blob_state_2) {
     return 0.0;
@@ -58,6 +59,7 @@ float distance_blob(BlobAdapter &db, const BlobState *blob_state_1, const BlobSt
 }
 
 float distance_vec_blob(BlobAdapter &db, std::span<const float> input_span, const BlobState *blob_state) {
+  std::cout << "distance vec blob" <<  std::endl;
   float distance = 0.0;
   db.LoadBlob(
     blob_state,
@@ -70,4 +72,47 @@ float distance_vec_blob(BlobAdapter &db, std::span<const float> input_span, cons
   return distance;
 }
 
+std::vector<size_t> knn(const std::vector<float> &query,
+  const std::vector<std::vector<float>> &data,
+  size_t k) {
+  std::vector<std::pair<float, size_t>> distIdx;
+  distIdx.reserve(data.size());
+
+  for (size_t i = 0; i < data.size(); ++i) {
+    float dist = distance_vec(query, data[i]);
+    distIdx.emplace_back(dist, i);
+  }
+
+  std::sort(distIdx.begin(), distIdx.end(), [](auto &l, auto &r) { return l.first < r.first; });
+
+  std::vector<size_t> neighbors;
+  neighbors.reserve(k);
+  for (size_t i = 0; i < k && i < distIdx.size(); ++i) {
+    neighbors.push_back(distIdx[i].second);
+  }
+  return neighbors;
 }
+
+float knn_hnsw_error(const std::vector<float> &query, const std::vector<size_t> &knn_res, const std::vector<size_t> &hnsw_res, const std::vector<std::vector<float>> &data) {
+  assert(knn_res.size() == hnsw_res.size());
+
+  float error_knn = 0.0f;
+  for (size_t idx : knn_res) {
+    error_knn += distance_vec(query, data[idx]);
+  }
+  error_knn /= (float)knn_res.size();
+  std::cout << "KNN absolute error: " << error_knn << std::endl;
+
+  float error_hnsw = 0.0f;
+  for (size_t idx : hnsw_res) {
+    error_hnsw += distance_vec(query, data[idx]);
+  }
+  error_hnsw /= (float)hnsw_res.size();
+  std::cout << "HNSW absolute error: " << error_hnsw << std::endl;
+
+  float res_error = error_hnsw - error_knn;
+  std::cout << "Result error:" << res_error << std::endl;
+  return res_error;
+}
+
+} // namespace leanstore::storage::vector

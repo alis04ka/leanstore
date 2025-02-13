@@ -33,18 +33,19 @@ double get_search_time_ivfflat() {
 }
 
 int calculate_num_centroids(int num_vec) {
-  if (num_vec < 3)
+  if (num_vec < 5)
     return num_vec;
-  return std::max(3, static_cast<int>(std::sqrt(num_vec)));
+  return std::max(5, static_cast<int>(std::sqrt(num_vec)));
 }
 
 int calculate_num_probe_centroids(int num_centroids) {
-  if (num_centroids < 3)
+  if (num_centroids < 5)
     return num_centroids;
-  return std::max(3, static_cast<int>(num_centroids * 0.1));
+  return std::max(5, static_cast<int>(num_centroids * 0.15));
 }
 
 int find_bucket(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, const BlobState *input_vec) {
+  std::cout << "find bucket" <<  std::endl;
   START_TIMER(t);
   float min_dist = MAXFLOAT;
   int min_index = -1;
@@ -95,7 +96,10 @@ std::vector<int> find_k_closest_centroids(VectorAdapter &adapter_centroids, Blob
 void initialize_centroids(VectorAdapter &adapter_centroids, VectorAdapter &adapter_main, BlobAdapter &blob_adapter, size_t num_centroids) {
   START_TIMER(t);
   size_t num_vectors = adapter_main.Count();
+  assert(num_vectors > 0);
+  std::cout << num_vectors << " vectors in DB" << std::endl;
   size_t num_to_assign = std::min(num_centroids, num_vectors);
+  std::cout << "Centroids to assign: " << num_centroids << std::endl;
 
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -129,9 +133,10 @@ void initialize_centroids(VectorAdapter &adapter_centroids, VectorAdapter &adapt
   std::cout << "Centroid initialization complete. Total assigned: " << num_to_assign << std::endl;
 }
 
-float update_one_centroid(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, std::vector<const BlobState *> bucket, const VectorRecord::Key &key, size_t vector_size) {
+void update_one_centroid(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, std::vector<const BlobState *> bucket, const VectorRecord::Key &key, size_t vector_size) {
+  std::cout << "update one centroid" <<  std::endl;
   if (bucket.empty()) {
-    return 0.0;
+    return;
   }
   int num_vec = bucket.size();
 
@@ -155,26 +160,15 @@ float update_one_centroid(VectorAdapter &adapter_centroids, BlobAdapter &blob_ad
   }
 
   std::span<u8> new_centroid_data(reinterpret_cast<u8 *>(sum_vec.data()), sum_vec.size() * sizeof(float));
-  std::span<float> new_centroid_data_float(sum_vec.data(), sum_vec.size());
-  float dist = 0.0;
 
-  adapter_centroids.LookUp({key}, [&](const VectorRecord &record) {
-    blob_adapter.LoadBlob(&record.blobState, [&](std::span<const u8> old_data) {
-        std::span<const float> old_data_span(reinterpret_cast<const float *>(old_data.data()), old_data.size() / sizeof(float));
-        dist = distance_vec(new_centroid_data_float, old_data_span);
-        }, false);
-  });
-
-  // std::cout << "New centroid " << sum_vec[0] << std::endl;
   adapter_centroids.Update({key}, new_centroid_data);
-  return dist;
 }
 
 IVFFlatIndex::IVFFlatIndex(VectorAdapter adapter_main, VectorAdapter adapter_centroids, BlobAdapter &blob_adapter, size_t num_centroids, size_t num_probe_centroids, size_t vector_size)
     : adapter_main(adapter_main), adapter_centroids(adapter_centroids), blob_adapter(blob_adapter),num_centroids(num_centroids), num_probe_centroids(num_probe_centroids), vector_size(vector_size) {
-  std::cout << "Number of centroids: " << num_centroids << std::endl;
-  std::cout << "Number of probe centroids: " << num_probe_centroids << std::endl;
-  std::cout << "Vector size: " << vector_size << std::endl;
+}
+
+void IVFFlatIndex::build_index() {
   centroids.resize(num_centroids);
   vectors_storage.resize(adapter_main.Count());
   vectors.resize(adapter_main.Count());
@@ -186,11 +180,9 @@ IVFFlatIndex::IVFFlatIndex(VectorAdapter adapter_main, VectorAdapter adapter_cen
       vectors[idx] = reinterpret_cast<const BlobState *>(vectors_storage[idx].data());
       idx++;
       return true;
-    });
-}
-
-void IVFFlatIndex::build_index() {
+  });
   START_TIMER(t);
+  std::cout << "count: " << adapter_main.Count() << std::endl;
   initialize_centroids(adapter_centroids, adapter_main, blob_adapter, num_centroids);
   assign_vectors_to_centroids();
   END_TIMER(t, build_index_time);
@@ -199,22 +191,18 @@ void IVFFlatIndex::build_index() {
 #endif
 }
 
-bool IVFFlatIndex::update_centroids() {
-  bool converged = true;
+void IVFFlatIndex::update_centroids() {
+  std::cout << "update centroids" <<  std::endl;
   START_TIMER(t);
   for (size_t i = 0; i < centroids.size(); i++) {
-    float dist = update_one_centroid(adapter_centroids, blob_adapter, centroids[i].bucket, {(int)i}, vector_size);
-    if (dist > 5 * sqrt(vector_size)) {
-      converged = false;
-    }
+    update_one_centroid(adapter_centroids, blob_adapter, centroids[i].bucket, {(int)i}, vector_size);
   }
   END_TIMER(t, update_centroids_time);
-  return converged;
 }
 
 void IVFFlatIndex::assign_vectors_to_centroids() {
   START_TIMER(t);
-  int max_iterations = 5;
+  int max_iterations = 10;
   for (int i = 0; i < max_iterations; i++) {
     std::cout << "i = " << i << std::endl;
     for (size_t i = 0; i < centroids.size(); i++) {
@@ -225,10 +213,7 @@ void IVFFlatIndex::assign_vectors_to_centroids() {
       int bucket_num = find_bucket(adapter_centroids, blob_adapter, vectors[i]);
       centroids[bucket_num].bucket.push_back(vectors[i]);
     }
-
-    bool converged = update_centroids();
-    if (converged)
-      break;
+    update_centroids();
   }
   END_TIMER(t, assign_vectros_time);
 }

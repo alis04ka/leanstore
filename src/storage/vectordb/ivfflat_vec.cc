@@ -3,7 +3,7 @@
 #include "storage/vectordb/util.h"
 #include <random>
 
-namespace leanstore::storage::vector {
+namespace leanstore::storage::vector::vec {
 
 #ifdef TIME_INDEX
 static i64 build_index_time = 0;
@@ -111,35 +111,31 @@ void initialize_centroids_vec(const std::vector<std::vector<float>> &vectors, st
   std::cout << "Centroid initialization complete. Total assigned: " << num_to_assign << std::endl;
 }
 
-float update_one_centroid_vec(std::vector<std::span<float>> &bucket, size_t vector_size) {
-  if (bucket.empty()) {
-    return 0.0;
+void update_one_centroid_vec(Centroid &centroid, size_t vector_size) {
+  if (centroid.bucket.empty()) {
+    return;
   }
-  int num_vec = bucket.size();
+  int num_vec = centroid.bucket.size();
 
   std::vector<float> sum_vec(vector_size, 0.0);
 
   for (int i = 0; i < num_vec; i++) {
     for (size_t j = 0; j < vector_size; j++) {
-      sum_vec[j] += bucket[i][j];
+      sum_vec[j] += centroid.bucket[i][j];
     }
   }
 
   for (size_t j = 0; j < vector_size; j++) {
     sum_vec[j] /= num_vec;
   }
-
-  return 1000.0; ////CHANGE
+  centroid.value = sum_vec;
 }
 
-IVFFlatIndex::IVFFlatIndex(size_t num_centroids, size_t num_probe_centroids, size_t vector_size, std::vector<std::vector<float>> &&vectors)
+IVFFlatIndexVec::IVFFlatIndexVec(size_t num_centroids, size_t num_probe_centroids, size_t vector_size, std::vector<std::vector<float>> &&vectors)
     : num_centroids(num_centroids), num_probe_centroids(num_probe_centroids), vector_size(vector_size), vectors(std::move(vectors)) {
-  std::cout << "Number of centroids: " << num_centroids << std::endl;
-  std::cout << "Number of probe centroids: " << num_probe_centroids << std::endl;
-  std::cout << "Vector size: " << vector_size << std::endl;
 }
 
-void IVFFlatIndex::build_index_vec() {
+void IVFFlatIndexVec::build_index_vec() {
   START_TIMER(t);
   centroids.reserve(num_centroids);
   initialize_centroids_vec(vectors, centroids, num_centroids);
@@ -150,24 +146,19 @@ void IVFFlatIndex::build_index_vec() {
 #endif
 }
 
-std::vector<Centroid> IVFFlatIndex::get_centroids() {
+std::vector<Centroid> IVFFlatIndexVec::get_centroids() {
   return centroids;
 }
 
-bool IVFFlatIndex::update_centroids_vec() {
-  bool converged = true;
+void IVFFlatIndexVec::update_centroids_vec() {
   START_TIMER(t);
   for (size_t i = 0; i < centroids.size(); i++) {
-    float dist = update_one_centroid_vec(centroids[i].bucket, vector_size);
-    if (dist > 5 * sqrt(vector_size)) {
-      converged = false;
-    }
+    update_one_centroid_vec(centroids[i], vector_size);
   }
   END_TIMER(t, update_centroids_time);
-  return converged;
 }
 
-void IVFFlatIndex::assign_vectors_to_centroids_vec() {
+void IVFFlatIndexVec::assign_vectors_to_centroids_vec() {
   START_TIMER(t);
   int max_iterations = 5;
   for (int i = 0; i < max_iterations; i++) {
@@ -181,14 +172,12 @@ void IVFFlatIndex::assign_vectors_to_centroids_vec() {
       centroids[bucket_num].bucket.push_back(vectors[i]);
     }
 
-    bool converged = update_centroids_vec();
-    if (converged)
-      break;
+    update_centroids_vec();
   }
   END_TIMER(t, assign_vectros_time);
 }
 
-std::vector<std::span<float>> IVFFlatIndex::find_n_closest_vectors_vec(const std::vector<float> &input_vec, size_t n) {
+std::vector<std::span<float>> IVFFlatIndexVec::find_n_closest_vectors_vec(const std::vector<float> &input_vec, size_t n) {
   START_TIMER(t);
   std::vector<int> indices = find_k_closest_centroids_vec(input_vec, centroids, num_probe_centroids);
   std::vector<std::span<float>> relevant_vectors;

@@ -47,7 +47,6 @@ public:
   void Update(const VectorRecord::Key &key, std::span<u8> updated_data);
   auto LookUp(const VectorRecord::Key &r_key, const AccessVectorFunc &fn) -> bool;
   auto GetFloatVector(const VectorRecord::Key &key) -> std::vector<float>;
-  auto GetFloatVectorFromBlobState(const BlobState *blob_state) -> std::vector<float>;
   auto Count() -> u64;
 
 };

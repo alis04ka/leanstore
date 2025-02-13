@@ -27,4 +27,16 @@ void BlobAdapter::RemoveBlob(leanstore::BlobState *state) {
   db_->RemoveBlob(state);
 }
 
+auto BlobAdapter::GetFloatVectorFromBlobState(const BlobState *blob_state) -> std::vector<float> {
+  std::vector<float> vec_to_return;
+  LoadBlob(
+    blob_state,
+    [&](std::span<const u8> blob) {
+      std::span<const float> span(reinterpret_cast<const float *>(blob.data()), blob.size() / sizeof(float));
+      vec_to_return.assign(span.begin(), span.end());
+    },
+    false);
+  return vec_to_return;
+}
+
 } // namespace leanstore::storage::vector
