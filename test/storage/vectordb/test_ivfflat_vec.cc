@@ -8,6 +8,7 @@ TEST(IVFFlatVec, BuildIndexAndLookup) {
   int num_centroids = calculate_num_centroids_vec(num_vec);
   int num_probe_centroids = calculate_num_probe_centroids_vec(num_centroids);
   size_t vector_size = 1000;
+  size_t num_iter = 10;
 
   std::vector<std::vector<float>> vectors;
   for (int i = 0; i < num_vec; ++i) {
@@ -15,7 +16,7 @@ TEST(IVFFlatVec, BuildIndexAndLookup) {
     vectors.push_back(vector);
   }
 
-  IVFFlatIndexVec index(num_centroids, num_probe_centroids, vector_size, std::move(vectors));
+  IVFFlatIndexVec index(num_centroids, num_probe_centroids, vector_size, num_iter, std::move(vectors));
   index.build_index_vec();
   std::vector<Centroid> centroids = index.get_centroids();
 

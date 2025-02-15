@@ -131,8 +131,9 @@ void update_one_centroid_vec(Centroid &centroid, size_t vector_size) {
   centroid.value = sum_vec;
 }
 
-IVFFlatIndexVec::IVFFlatIndexVec(size_t num_centroids, size_t num_probe_centroids, size_t vector_size, std::vector<std::vector<float>> &&vectors)
-    : num_centroids(num_centroids), num_probe_centroids(num_probe_centroids), vector_size(vector_size), vectors(std::move(vectors)) {
+IVFFlatIndexVec::IVFFlatIndexVec(size_t num_centroids, size_t num_probe_centroids, size_t vector_size, size_t num_iter, std::vector<std::vector<float>> &&vectors)
+    : num_centroids(num_centroids), num_probe_centroids(num_probe_centroids), vector_size(vector_size),
+      num_iter(num_iter), vectors(std::move(vectors)) {
 }
 
 void IVFFlatIndexVec::build_index_vec() {
@@ -160,8 +161,7 @@ void IVFFlatIndexVec::update_centroids_vec() {
 
 void IVFFlatIndexVec::assign_vectors_to_centroids_vec() {
   START_TIMER(t);
-  int max_iterations = 5;
-  for (int i = 0; i < max_iterations; i++) {
+  for (size_t i = 0; i < num_iter; i++) {
     std::cout << "i = " << i << std::endl;
     for (size_t i = 0; i < centroids.size(); i++) {
       centroids[i].bucket.clear();

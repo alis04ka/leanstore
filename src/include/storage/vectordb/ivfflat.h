@@ -1,6 +1,7 @@
 #pragma once
 #include "schema.h"
 #include "storage/vectordb/vector_adapter.h"
+#include "storage/vectordb/vector_index.h"
 #include <iostream>
 
 #define TIME_INDEX
@@ -28,14 +29,14 @@ std::vector<int> find_k_closest_centroids(VectorAdapter &adapter_centroids, Blob
 void initialize_centroids(VectorAdapter &adapter_centroids, VectorAdapter &adapter_main, BlobAdapter &blob_adapter, size_t num_centroids);
 void update_one_centroid(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, std::vector<const BlobState *> bucket, const VectorRecord::Key &key, size_t vector_size);
 
-class IVFFlatIndex {
+class IVFFlatIndex : public VectorIndex {
 public:
-  IVFFlatIndex(VectorAdapter adapter_main, VectorAdapter adapter_centroids, BlobAdapter &blob_adapter, size_t num_centroids, size_t num_probe_centroids, size_t vector_size);
+  IVFFlatIndex(VectorAdapter adapter_main, VectorAdapter adapter_centroids, BlobAdapter &blob_adapter, size_t num_centroids, size_t num_probe_centroids, size_t vector_size, size_t num_iter);
 
   void assign_vectors_to_centroids();
   void update_centroids();
-  void build_index();
-  std::vector<const BlobState *> find_n_closest_vectors(const std::vector<float> &input_vec, size_t n);
+  void build_index() override;
+  std::vector<const BlobState *> find_n_closest_vectors(const std::vector<float> &input_vec, size_t n) override;
 
 private:
   VectorAdapter adapter_main;
@@ -44,6 +45,7 @@ private:
   size_t num_centroids;
   size_t num_probe_centroids;
   size_t vector_size;
+  size_t num_iter;
   std::vector<Centroid> centroids;
   std::vector<const BlobState *> vectors;
   std::vector<std::array<uint8_t, BlobState::MAX_MALLOC_SIZE>> vectors_storage;

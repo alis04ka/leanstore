@@ -1,4 +1,5 @@
 #pragma once
+#include "storage/vectordb/vector_index_base.h"
 #include <span>
 #include <vector>
 #define TIME_INDEX
@@ -21,20 +22,21 @@ std::vector<int> find_k_closest_centroids_vec(const std::vector<float> &input_ve
 void initialize_centroids_vec(const std::vector<std::vector<float>> &vectors, std::vector<Centroid> &centroids, size_t num_centroids);
 void update_one_centroid_vec(Centroid &centroid, size_t vector_size);
 
-class IVFFlatIndexVec {
+class IVFFlatIndexVec : public BaseVectorIndex {
 public:
-  IVFFlatIndexVec(size_t num_centroids, size_t num_probe_centroids, size_t vector_size, std::vector<std::vector<float>> &&vectors);
+  IVFFlatIndexVec(size_t num_centroids, size_t num_probe_centroids, size_t vector_size, size_t num_iter, std::vector<std::vector<float>> &&vectors);
 
   void assign_vectors_to_centroids_vec();
   void update_centroids_vec();
-  void build_index_vec();
-  std::vector<std::span<float>> find_n_closest_vectors_vec(const std::vector<float> &input_vec, size_t n);
+  void build_index_vec() override;
+  std::vector<std::span<float>> find_n_closest_vectors_vec(const std::vector<float> &input_vec, size_t n) override;
   std::vector<Centroid> get_centroids();
 
 private:
   size_t num_centroids;
   size_t num_probe_centroids;
   size_t vector_size;
+  size_t num_iter;
   std::vector<Centroid> centroids;
   std::vector<std::vector<float>> vectors;
 };

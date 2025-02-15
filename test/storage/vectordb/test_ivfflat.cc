@@ -379,6 +379,7 @@ TEST(IVFFlat, BuildIndex1) {
     int num_vec = 1000;
     int num_centroids = 3;
     size_t vector_size = 1000;
+    size_t num_iter = 10;
 
     for (int id = 0; id < num_vec; ++id) {
       std::vector<float> vector(vector_size, static_cast<float>(id));
@@ -387,7 +388,7 @@ TEST(IVFFlat, BuildIndex1) {
       adapter_main.InsertVectorRecord({id}, *reinterpret_cast<const VectorRecord *>(state));
     }
 
-    IVFFlatIndex index(adapter_main, adapter_centroids, blob_adapter, num_centroids, num_centroids, vector_size);
+    IVFFlatIndex index(adapter_main, adapter_centroids, blob_adapter, num_centroids, num_centroids, vector_size, num_iter);
     index.build_index();
 
     leanstore->CommitTransaction();
@@ -449,7 +450,8 @@ TEST(IVFFlat, BuildIndexAndLookup) {
     int num_vec = 1000;
     int num_centroids = calculate_num_centroids(num_vec);
     int num_probe_centroids = calculate_num_probe_centroids(num_centroids);
-    size_t vector_size = 3070; //3080 geht nichtmehr
+    size_t vector_size = 3070; // 3080 geht nichtmehr
+    size_t num_iter = 10;
 
     for (int i = 0; i < num_vec; ++i) {
       std::vector<float> vector(vector_size, static_cast<float>(i));
@@ -460,7 +462,7 @@ TEST(IVFFlat, BuildIndexAndLookup) {
 
      assert((int)adapter_main.Count() == num_vec);
 
-    IVFFlatIndex index(adapter_main, adapter_centroids, blob_adapter, num_centroids, num_probe_centroids, vector_size);
+    IVFFlatIndex index(adapter_main, adapter_centroids, blob_adapter, num_centroids, num_probe_centroids, vector_size, num_iter);
     index.build_index();
 
     std::vector<float> input_vec(vector_size, 30.6);
@@ -496,6 +498,7 @@ TEST(IVFFlat, BuildIndexAndLookupBigVecSize) {
     int num_centroids = calculate_num_centroids(num_vec);
     int num_probe_centroids = calculate_num_probe_centroids(num_centroids);
     size_t vector_size = 10000;
+    size_t num_iter = 10;
 
     for (int i = 0; i < num_vec; ++i) {
       std::vector<float> vector(vector_size, static_cast<float>(i));
@@ -506,7 +509,7 @@ TEST(IVFFlat, BuildIndexAndLookupBigVecSize) {
 
     assert((int)adapter_main.Count() == num_vec);
 
-    IVFFlatIndex index(adapter_main, adapter_centroids, blob_adapter, num_centroids, num_probe_centroids, vector_size);
+    IVFFlatIndex index(adapter_main, adapter_centroids, blob_adapter, num_centroids, num_probe_centroids, vector_size, num_iter);
     auto build_start_time = std::chrono::high_resolution_clock::now();
     index.build_index();
     auto build_end_time = std::chrono::high_resolution_clock::now();

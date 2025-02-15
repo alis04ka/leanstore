@@ -1,7 +1,7 @@
 #include "storage/vectordb/hnsw_vec.h"
 #include "gtest/gtest.h"
 
-using namespace leanstore::storage::vector;
+using namespace leanstore::storage::vector::vec;
 
 TEST(HNSWVec, BuildIndex) {
 
@@ -14,7 +14,7 @@ TEST(HNSWVec, BuildIndex) {
     vectors.push_back(vector);
   }
 
-  HNSWIndex index(std::move(vectors));
+  HNSWIndex index(std::move(vectors),  200, 100, 10);
   index.build_index_vec();
   std::vector<float> search_vector(vector_size, 38.6);
   std::vector<size_t> res = index.scan_vector_entry_vec(search_vector, 7);

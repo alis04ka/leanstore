@@ -148,7 +148,7 @@ HNSWIndex::HNSWIndex(VectorAdapter db, BlobAdapter blob_adapter, size_t ef_const
     });
   layers_.reserve(100);
   layers_.emplace_back(vertices_);
-  m_max = compute_m_max(vector_size);
+  //m_max = compute_m_max(vector_size);
   std::cout << "m max is " << m_max << std::endl;
   m_l_ = 1.0 / std::log(m_max);
   std::random_device rand_dev;
@@ -167,7 +167,6 @@ void HNSWIndex::build_index() {
 }
 
 std::vector<size_t> HNSWIndex::scan_vector_entry(const std::vector<float> &base_vector, size_t limit) {
-  START_TIMER(t);
   std::vector<size_t> entry_points{layers_[layers_.size() - 1].default_entry_point()};
   for (int level = layers_.size() - 1; level >= 1; level--) {
     auto nearest_elements = layers_[level].search_layer(blob_adapter, base_vector, ef_search_, entry_points);
@@ -176,8 +175,18 @@ std::vector<size_t> HNSWIndex::scan_vector_entry(const std::vector<float> &base_
   }
   auto neighbors = layers_[0].search_layer(blob_adapter, base_vector, limit > ef_search_ ? limit : ef_search_, entry_points);
   neighbors = select_neighbors_float(blob_adapter, base_vector, neighbors, vertices_, limit);
-  END_TIMER(t, search_time);
   return neighbors;
+}
+
+std::vector<const BlobState *> HNSWIndex::find_n_closest_vectors(const std::vector<float> &input_vec, size_t n) {
+  START_TIMER(t);
+  std::vector<size_t> neighbors = scan_vector_entry(input_vec, n);
+  std::vector<const BlobState *> states_res;
+  for (size_t i = 0; i < neighbors.size(); i++) {
+    states_res.push_back(vectors[i]);
+  }
+  END_TIMER(t, search_time);
+  return states_res;
 }
 
 size_t HNSWIndex::add_vertex(const BlobState *vec) {

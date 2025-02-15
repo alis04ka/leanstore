@@ -51,8 +51,8 @@ TEST(HNSW, BuildIndexNonTrivial) {
   leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
     leanstore->StartTransaction();
 
-    int num_vec = 400;
-    size_t vector_size = 2000;
+    int num_vec = 256;
+    size_t vector_size = 10000;
 
     std::mt19937 rng(std::random_device{}());
     std::uniform_real_distribution<float> dist(0.0f, 10.0f);
@@ -86,29 +86,28 @@ TEST(HNSW, BuildIndexNonTrivial) {
     }
     std::cout << std::endl;
 
-    std::vector<size_t> res_hnsw = index.scan_vector_entry(search_vector, 10);
-    // std::vector<size_t> res_knn = knn(search_vector, all_vecs, 10);
+    std::vector<const leanstore::BlobState *> res_hnsw = index.find_n_closest_vectors(search_vector, 10);
+    std::vector<size_t> res_knn = knn(search_vector, all_vecs, 10);
 
-    // std::cout << "\nResult hnsw: " << std::endl;
-    // for (auto neighbor_id : res_hnsw) {
-    //   const leanstore::BlobState *state = index.vectors[neighbor_id];
-    //   std::vector<float> vec = blob_adapter.GetFloatVectorFromBlobState(state);
-    //   for (int i = 0; i < 5; ++i) {
-    //     std::cout << vec[i] << " ";
-    //   }
-    //   std::cout << std::endl;
-    // }
+    std::cout << "\nResult hnsw: " << std::endl;
+    for (auto state : res_hnsw) {
+      std::vector<float> vec = blob_adapter.GetFloatVectorFromBlobState(state);
+      for (int i = 0; i < 5; ++i) {
+        std::cout << vec[i] << " ";
+      }
+      std::cout << std::endl;
+    }
 
-    // std::cout << "Result knn: " << std::endl;
-    // for (auto neighbor_id : res_knn) {
-    //   for (int i = 0; i < 5; ++i) {
-    //     std::cout << all_vecs[neighbor_id][i] << " ";
-    //   }
-    //   std::cout << std::endl;
-    // }
+    std::cout << "Result knn: " << std::endl;
+    for (auto neighbor_id : res_knn) {
+      for (int i = 0; i < 5; ++i) {
+        std::cout << all_vecs[neighbor_id][i] << " ";
+      }
+      std::cout << std::endl;
+    }
 
-    // std::cout << "\nSearch time hnsw: " << get_search_time_hnsw() << " μs" << std::endl;
-    // float error = knn_hnsw_error(search_vector, res_knn, res_hnsw, all_vecs);
+    std::cout << "\nSearch time hnsw: " << get_search_time_hnsw() << " μs" << std::endl;
+    float error = knn_hnsw_error(blob_adapter, search_vector, res_knn, res_hnsw, all_vecs);
 
     leanstore->CommitTransaction();
   });

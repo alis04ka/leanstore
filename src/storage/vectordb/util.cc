@@ -3,7 +3,7 @@
 namespace leanstore::storage::vector {
 
 float distance_vec(std::span<const float> span1, std::span<const float> span2) {
-  std::cout << "distance vec" <<  std::endl;
+  //std::cout << "distance vec" <<  std::endl;
   assert(span1.size() == span2.size());
 
   size_t size = span1.size();
@@ -36,12 +36,31 @@ float distance_vec(std::span<const float> span1, std::span<const float> span2) {
 }
 
 float distance_blob(BlobAdapter &db, const BlobState *blob_state_1, const BlobState *blob_state_2) {
-  std::cout << "distance blob" <<  std::endl;
   assert(blob_state_1->blob_size == blob_state_2->blob_size);
   if (blob_state_1 == blob_state_2) {
     return 0.0;
   }
+  if (blob_state_1->BlobID() == blob_state_2->BlobID()) {
+    return 0.0;
+  }
+
+
+  // blob_state_1->print_float();
+  // blob_state_2->print_float();
   float distance = 0.0;
+  // std::vector<float> blob1_data;
+  // db.LoadBlob(blob_state_1, [&](std::span<const uint8_t> blob1) {
+  //     std::span<const float> span1(reinterpret_cast<const float *>(blob1.data()), blob1.size() / sizeof(float));
+  //     blob1_data.resize(span1.size());
+  //     std::copy(span1.begin(), span1.end(), blob1_data.begin()); }, false);
+  // db.LoadBlob(
+  //   blob_state_2,
+  //   [&](std::span<const uint8_t> blob2) {
+  //     std::span<const float> span2(reinterpret_cast<const float *>(blob2.data()), blob2.size() / sizeof(float));
+  //     distance = distance_vec(blob1_data, span2);
+  //   },
+  //   false);
+
   db.LoadBlob(
     blob_state_1,
     [&](std::span<const uint8_t> blob1) {
@@ -59,7 +78,7 @@ float distance_blob(BlobAdapter &db, const BlobState *blob_state_1, const BlobSt
 }
 
 float distance_vec_blob(BlobAdapter &db, std::span<const float> input_span, const BlobState *blob_state) {
-  std::cout << "distance vec blob" <<  std::endl;
+  //std::cout << "distance vec blob" <<  std::endl;
   float distance = 0.0;
   db.LoadBlob(
     blob_state,
@@ -72,9 +91,7 @@ float distance_vec_blob(BlobAdapter &db, std::span<const float> input_span, cons
   return distance;
 }
 
-std::vector<size_t> knn(const std::vector<float> &query,
-  const std::vector<std::vector<float>> &data,
-  size_t k) {
+std::vector<size_t> knn(const std::vector<float> &query, const std::vector<std::vector<float>> &data, size_t k) {
   std::vector<std::pair<float, size_t>> distIdx;
   distIdx.reserve(data.size());
 
@@ -93,7 +110,8 @@ std::vector<size_t> knn(const std::vector<float> &query,
   return neighbors;
 }
 
-float knn_hnsw_error(const std::vector<float> &query, const std::vector<size_t> &knn_res, const std::vector<size_t> &hnsw_res, const std::vector<std::vector<float>> &data) {
+
+float knn_hnsw_error(BlobAdapter &db, const std::vector<float> &query, const std::vector<size_t> &knn_res, const std::vector<const BlobState *> &hnsw_res, const std::vector<std::vector<float>> &data) {
   assert(knn_res.size() == hnsw_res.size());
 
   float error_knn = 0.0f;
@@ -104,8 +122,8 @@ float knn_hnsw_error(const std::vector<float> &query, const std::vector<size_t> 
   std::cout << "KNN absolute error: " << error_knn << std::endl;
 
   float error_hnsw = 0.0f;
-  for (size_t idx : hnsw_res) {
-    error_hnsw += distance_vec(query, data[idx]);
+  for (auto state : hnsw_res) {
+    error_hnsw += distance_vec(query, db.GetFloatVectorFromBlobState(state));
   }
   error_hnsw /= (float)hnsw_res.size();
   std::cout << "HNSW absolute error: " << error_hnsw << std::endl;

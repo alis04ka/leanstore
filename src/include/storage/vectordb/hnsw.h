@@ -1,5 +1,6 @@
 #pragma once
 #include "storage/vectordb/vector_adapter.h"
+#include "storage/vectordb/vector_index.h"
 #include <random>
 
 #define TIME_INDEX
@@ -30,7 +31,7 @@ public:
   friend class HNSWIndex;
 };
 
-class HNSWIndex {
+class HNSWIndex : public VectorIndex {
 public:
   VectorAdapter db;
   BlobAdapter blob_adapter;
@@ -52,10 +53,11 @@ public:
   // level normalization factor
   double m_l_;
 
-  HNSWIndex(VectorAdapter db, BlobAdapter adapter, size_t ef_construction_, size_t ef_search, size_t m_max_);
-  void build_index();
+  HNSWIndex(VectorAdapter db, BlobAdapter adapter, size_t ef_construction, size_t ef_search, size_t m_max);
+  void build_index() override;
   std::vector<size_t> scan_vector_entry(const std::vector<float> &base_vector, size_t limit);
   void insert_vector_entry(const BlobState *vec);
+  std::vector<const BlobState *> find_n_closest_vectors(const std::vector<float> &input_vec, size_t n) override;
 
   size_t add_vertex(const BlobState *vec);
 };

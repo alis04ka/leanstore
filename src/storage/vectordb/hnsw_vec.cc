@@ -3,7 +3,7 @@
 #include "storage/vectordb/util.h"
 #include <random>
 
-namespace leanstore::storage::vector {
+namespace leanstore::storage::vector::vec {
 
 #ifdef TIME_INDEX
 static i64 build_index_time = 0;
@@ -24,7 +24,7 @@ double get_search_time_hnsw_vec() {
 NSWIndex::NSWIndex(std::vector<std::span<float>> &vertices)
     : vertices_(vertices) {}
 
-std::vector<size_t> select_neighbors_vec(const std::span<float> input_vec, const std::vector<size_t> &vertex_ids, std::vector<std::span<float>> &vertices, size_t m) {
+std::vector<size_t> select_neighbors_vec(const std::span<const float> input_vec, const std::vector<size_t> &vertex_ids, std::vector<std::span<float>> &vertices, size_t m) {
   std::vector<std::pair<float, size_t>> distances;
   distances.reserve(vertex_ids.size());
 
@@ -43,7 +43,7 @@ std::vector<size_t> select_neighbors_vec(const std::span<float> input_vec, const
   return selected_vs;
 }
 
-std::vector<size_t> NSWIndex::search_layer_vec(const std::span<float> base_vector, size_t limit, const std::vector<size_t> &entry_points) {
+std::vector<size_t> NSWIndex::search_layer_vec(const std::span<const float> base_vector, size_t limit, const std::vector<size_t> &entry_points) {
   // for (const auto &[key, value] : edges_) {
   //   std::cout << "Vertex " << key << " has " << value.size() << " edges." << std::endl;
   // }
@@ -102,12 +102,14 @@ void NSWIndex::connect_vec(size_t vertex_a, size_t vertex_b) {
   edges_[vertex_b].push_back(vertex_a);
 }
 
-HNSWIndex::HNSWIndex(std::vector<std::vector<float>> &&vectors)
-    : vectors(std::move(vectors)) {
-  std::random_device rand_dev;
-  generator_ = std::mt19937(rand_dev());
+HNSWIndex::HNSWIndex(std::vector<std::vector<float>> &&vectors, size_t ef_construction, size_t ef_search, size_t m_max)
+    : vectors(std::move(vectors)), ef_construction_(ef_construction), ef_search_(ef_search), m_max_(m_max) {
   layers_.reserve(100);
   layers_.emplace_back(vertices_);
+  std::cout << "m max is " << m_max << std::endl;
+  m_l_ = 1.0 / std::log(m_max);
+  std::random_device rand_dev;
+  generator_ = std::mt19937(rand_dev());
 }
 
 void HNSWIndex::build_index_vec() {
@@ -121,7 +123,7 @@ void HNSWIndex::build_index_vec() {
 #endif
 }
 
-std::vector<size_t> HNSWIndex::scan_vector_entry_vec(const std::span<float> base_vector, size_t limit) {
+std::vector<size_t> HNSWIndex::scan_vector_entry_vec(const std::span<const float> base_vector, size_t limit) {
   START_TIMER(t);
   std::vector<size_t> entry_points{layers_[layers_.size() - 1].default_entry_point_vec()};
   for (int level = layers_.size() - 1; level >= 1; level--) {
@@ -133,6 +135,15 @@ std::vector<size_t> HNSWIndex::scan_vector_entry_vec(const std::span<float> base
   neighbors = select_neighbors_vec(base_vector, neighbors, vertices_, limit);
   END_TIMER(t, search_time);
   return neighbors;
+}
+
+std::vector<std::span<float>> HNSWIndex::find_n_closest_vectors_vec(const std::vector<float> &input_vec, size_t n) {
+  std::vector<size_t> indices_res = scan_vector_entry_vec(input_vec, n);
+  std::vector<std::span<float>> vectors_res;
+  for (size_t i = 0; i < vectors.size(); i++) {
+    vectors_res.push_back(vectors[indices_res[i]]);
+  }
+  return vectors_res;
 }
 
 size_t HNSWIndex::add_vertex_vec(std::span<float> vec) {
@@ -160,7 +171,7 @@ void HNSWIndex::insert_vector_entry_vec(const std::span<float> key) {
       auto &layer = layers_[level];
       // std::cout << "Level " << level << std::endl;
       nearest_elements = layer.search_layer_vec(key, ef_construction_, entry_points);
-      auto neighbors = select_neighbors_vec(key, nearest_elements, vertices_, m_);
+      auto neighbors = select_neighbors_vec(key, nearest_elements, vertices_, m_max_);
       layer.add_vertex_vec(vertex_id);
       for (const auto neighbor : neighbors) {
         layer.connect_vec(vertex_id, neighbor);

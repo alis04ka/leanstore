@@ -32,6 +32,7 @@ if(ENABLE_TESTING)
   #leanstore_add_test(TestIVFFlatAdapter storage/vectordb/test_ivfflat_adapter.cc main.cc)
   leanstore_add_test(TestHNSW storage/vectordb/test_hnsw.cc main.cc)
   leanstore_add_test(TestHNSWVec storage/vectordb/test_hnsw_vec.cc main.cc)
+  leanstore_add_test(TestKnn storage/vectordb/test_knn.cc main.cc)
 endif()
 
 # ---------------------------------------------------------------------------

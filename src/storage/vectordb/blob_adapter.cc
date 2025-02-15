@@ -5,13 +5,13 @@ namespace leanstore::storage::vector {
 
 auto BlobAdapter::RegisterBlob(std::span<const u8> blob_payload) -> const BlobState * {
   auto prev_btup = nullptr;
-  auto res = db_->CreateNewBlob(blob_payload, prev_btup, false);
+  auto res = db_->CreateNewBlob(blob_payload, prev_btup, true);
   return reinterpret_cast<const BlobState *>(res.data());
 }
 
 auto BlobAdapter::UpdateBlob(std::span<const u8> blob_payload, leanstore::BlobState *prev_blob) -> const BlobState * {
   assert(prev_blob != nullptr);
-  auto res = db_->CreateNewBlob(blob_payload, prev_blob, false);
+  auto res = db_->CreateNewBlob(blob_payload, prev_blob, true);
   return reinterpret_cast<const BlobState *>(res.data());
 }
 

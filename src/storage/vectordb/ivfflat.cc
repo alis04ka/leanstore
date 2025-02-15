@@ -45,7 +45,6 @@ int calculate_num_probe_centroids(int num_centroids) {
 }
 
 int find_bucket(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, const BlobState *input_vec) {
-  std::cout << "find bucket" <<  std::endl;
   START_TIMER(t);
   float min_dist = MAXFLOAT;
   int min_index = -1;
@@ -89,8 +88,8 @@ std::vector<int> find_k_closest_centroids(VectorAdapter &adapter_centroids, Blob
     closest_indices.push_back(distances[j].second);
   }
 
-  return closest_indices;
   END_TIMER(t, find_k_closest_time);
+  return closest_indices;
 }
 
 void initialize_centroids(VectorAdapter &adapter_centroids, VectorAdapter &adapter_main, BlobAdapter &blob_adapter, size_t num_centroids) {
@@ -134,7 +133,6 @@ void initialize_centroids(VectorAdapter &adapter_centroids, VectorAdapter &adapt
 }
 
 void update_one_centroid(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, std::vector<const BlobState *> bucket, const VectorRecord::Key &key, size_t vector_size) {
-  std::cout << "update one centroid" <<  std::endl;
   if (bucket.empty()) {
     return;
   }
@@ -164,8 +162,9 @@ void update_one_centroid(VectorAdapter &adapter_centroids, BlobAdapter &blob_ada
   adapter_centroids.Update({key}, new_centroid_data);
 }
 
-IVFFlatIndex::IVFFlatIndex(VectorAdapter adapter_main, VectorAdapter adapter_centroids, BlobAdapter &blob_adapter, size_t num_centroids, size_t num_probe_centroids, size_t vector_size)
-    : adapter_main(adapter_main), adapter_centroids(adapter_centroids), blob_adapter(blob_adapter),num_centroids(num_centroids), num_probe_centroids(num_probe_centroids), vector_size(vector_size) {
+IVFFlatIndex::IVFFlatIndex(VectorAdapter adapter_main, VectorAdapter adapter_centroids, BlobAdapter &blob_adapter, size_t num_centroids, size_t num_probe_centroids, size_t vector_size, size_t num_iter)
+    : adapter_main(adapter_main), adapter_centroids(adapter_centroids), blob_adapter(blob_adapter), num_centroids(num_centroids),
+      num_probe_centroids(num_probe_centroids), vector_size(vector_size), num_iter(num_iter) {
 }
 
 void IVFFlatIndex::build_index() {
@@ -202,8 +201,7 @@ void IVFFlatIndex::update_centroids() {
 
 void IVFFlatIndex::assign_vectors_to_centroids() {
   START_TIMER(t);
-  int max_iterations = 10;
-  for (int i = 0; i < max_iterations; i++) {
+  for (size_t i = 0; i < num_iter; i++) {
     std::cout << "i = " << i << std::endl;
     for (size_t i = 0; i < centroids.size(); i++) {
       centroids[i].bucket.clear();
