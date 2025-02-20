@@ -16,16 +16,17 @@ void print_vec(T vec) {
 
 struct Centroid {
   std::vector<const BlobState *> bucket;
+  std::vector<float> sum_vec;
 };
 
 int calculate_num_centroids(int num_vec);
 int calculate_num_probe_centroids(int num_centroids);
 double get_search_time_ivfflat();
 
-int find_bucket(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, const BlobState *input_vec);
+int find_bucket(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, const BlobState *input_vec, std::vector<Centroid>& centroids);
 std::vector<int> find_k_closest_centroids(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, const std::vector<float> &input_vec, size_t k);
 void initialize_centroids(VectorAdapter &adapter_centroids, VectorAdapter &adapter_main, BlobAdapter &blob_adapter, size_t num_centroids);
-void update_one_centroid(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, std::vector<const BlobState *> bucket, const VectorRecord::Key &key, size_t vector_size);
+void update_one_centroid(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, Centroid& centroid, const VectorRecord::Key &key, size_t vector_size);
 
 class IVFFlatIndex : public VectorIndex {
 public:

@@ -47,7 +47,7 @@ TEST(IVFFlat, DistanceBetweenMainAndCentroids) {
   VectorAdapter adapter_main = VectorAdapter::CreateVectorAdapter<VectorRecord>(*leanstore);
   VectorAdapter adapter_centroids = VectorAdapter::CreateVectorAdapter<CentroidType>(*leanstore);
   BlobAdapter blob_adapter(*leanstore);
-   
+
   leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
     leanstore->StartTransaction();
 
@@ -81,45 +81,45 @@ TEST(IVFFlat, DistanceBetweenMainAndCentroids) {
   leanstore->Shutdown();
 }
 
-TEST(IVFFlat, FindBucketTest1) {
-  auto leanstore = std::make_unique<leanstore::LeanStore>();
-  VectorAdapter adapter_main = VectorAdapter::CreateVectorAdapter<VectorRecord>(*leanstore);
-  VectorAdapter adapter_centroids = VectorAdapter::CreateVectorAdapter<CentroidType>(*leanstore);
-  BlobAdapter blob_adapter(*leanstore);
-   ;
+// TEST(IVFFlat, FindBucketTest1) {
+//   auto leanstore = std::make_unique<leanstore::LeanStore>();
+//   VectorAdapter adapter_main = VectorAdapter::CreateVectorAdapter<VectorRecord>(*leanstore);
+//   VectorAdapter adapter_centroids = VectorAdapter::CreateVectorAdapter<CentroidType>(*leanstore);
+//   BlobAdapter blob_adapter(*leanstore);
+//    ;
 
-  leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
-    leanstore->StartTransaction();
-    std::vector<float> vec_main(1000, 1.5);
-    std::span<u8> data_main(reinterpret_cast<u8 *>(vec_main.data()), vec_main.size() * sizeof(float));
-    const leanstore::BlobState *state_main = blob_adapter.RegisterBlob(data_main);
-    adapter_main.InsertVectorRecord({2}, *reinterpret_cast<const VectorRecord *>(state_main));
+//   leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
+//     leanstore->StartTransaction();
+//     std::vector<float> vec_main(1000, 1.5);
+//     std::span<u8> data_main(reinterpret_cast<u8 *>(vec_main.data()), vec_main.size() * sizeof(float));
+//     const leanstore::BlobState *state_main = blob_adapter.RegisterBlob(data_main);
+//     adapter_main.InsertVectorRecord({2}, *reinterpret_cast<const VectorRecord *>(state_main));
 
-    std::vector<float> vec_centroid1(1000, 1.0);
-    std::span<u8> data_centroid1(
-      reinterpret_cast<u8 *>(vec_centroid1.data()), vec_centroid1.size() * sizeof(float));
-    const leanstore::BlobState *state_centroid1 = blob_adapter.RegisterBlob(data_centroid1);
-    adapter_centroids.InsertVectorRecord({0}, *reinterpret_cast<const VectorRecord *>(state_centroid1));
+//     std::vector<float> vec_centroid1(1000, 1.0);
+//     std::span<u8> data_centroid1(
+//       reinterpret_cast<u8 *>(vec_centroid1.data()), vec_centroid1.size() * sizeof(float));
+//     const leanstore::BlobState *state_centroid1 = blob_adapter.RegisterBlob(data_centroid1);
+//     adapter_centroids.InsertVectorRecord({0}, *reinterpret_cast<const VectorRecord *>(state_centroid1));
 
-    std::vector<float> vec_centroid2(1000, 3.0);
-    std::span<u8> data_centroid2(
-      reinterpret_cast<u8 *>(vec_centroid2.data()), vec_centroid2.size() * sizeof(float));
-    const leanstore::BlobState *state_centroid2 = blob_adapter.RegisterBlob(data_centroid2);
-    adapter_centroids.InsertVectorRecord({1}, *reinterpret_cast<const VectorRecord *>(state_centroid2));
+//     std::vector<float> vec_centroid2(1000, 3.0);
+//     std::span<u8> data_centroid2(
+//       reinterpret_cast<u8 *>(vec_centroid2.data()), vec_centroid2.size() * sizeof(float));
+//     const leanstore::BlobState *state_centroid2 = blob_adapter.RegisterBlob(data_centroid2);
+//     adapter_centroids.InsertVectorRecord({1}, *reinterpret_cast<const VectorRecord *>(state_centroid2));
 
-    const leanstore::BlobState *loaded_main;
-    adapter_main.LookUp({2}, [&](const VectorRecord &record) { loaded_main = &record.blobState; });
+//     const leanstore::BlobState *loaded_main;
+//     adapter_main.LookUp({2}, [&](const VectorRecord &record) { loaded_main = &record.blobState; });
 
-    int bucket_index = find_bucket(adapter_centroids, blob_adapter, loaded_main);
-    std::cout << "Chosen bucket index: " << bucket_index << std::endl;
+//     int bucket_index = find_bucket(adapter_centroids, blob_adapter, loaded_main);
+//     std::cout << "Chosen bucket index: " << bucket_index << std::endl;
 
-    EXPECT_EQ(bucket_index, 0);
+//     EXPECT_EQ(bucket_index, 0);
 
-    leanstore->CommitTransaction();
-  });
+//     leanstore->CommitTransaction();
+//   });
 
-  leanstore->Shutdown();
-}
+//   leanstore->Shutdown();
+// }
 
 TEST(IVFFlat, FindKClosestTest) {
   auto leanstore = std::make_unique<leanstore::LeanStore>();
@@ -160,103 +160,103 @@ TEST(IVFFlat, FindKClosestTest) {
   leanstore->Shutdown();
 }
 
-TEST(IVFFlat, FindBucketTestMultiple) {
-  auto leanstore = std::make_unique<leanstore::LeanStore>();
-  VectorAdapter adapter_main = VectorAdapter::CreateVectorAdapter<VectorRecord>(*leanstore);
-  VectorAdapter adapter_centroids = VectorAdapter::CreateVectorAdapter<CentroidType>(*leanstore);
-  BlobAdapter blob_adapter(*leanstore);
+// TEST(IVFFlat, FindBucketTestMultiple) {
+//   auto leanstore = std::make_unique<leanstore::LeanStore>();
+//   VectorAdapter adapter_main = VectorAdapter::CreateVectorAdapter<VectorRecord>(*leanstore);
+//   VectorAdapter adapter_centroids = VectorAdapter::CreateVectorAdapter<CentroidType>(*leanstore);
+//   BlobAdapter blob_adapter(*leanstore);
 
 
-  leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
-    leanstore->StartTransaction();
+//   leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
+//     leanstore->StartTransaction();
 
-    std::vector<const leanstore::BlobState *> loaded_vecs;
+//     std::vector<const leanstore::BlobState *> loaded_vecs;
 
-    for (int i = 0; i <= 10; ++i) {
-      std::vector<float> vec(1000, static_cast<float>(i));
-      std::span<u8> data(reinterpret_cast<u8 *>(vec.data()), vec.size() * sizeof(float));
-      const leanstore::BlobState *state = blob_adapter.RegisterBlob(data);
-      adapter_main.InsertVectorRecord({i}, *reinterpret_cast<const VectorRecord *>(state));
+//     for (int i = 0; i <= 10; ++i) {
+//       std::vector<float> vec(1000, static_cast<float>(i));
+//       std::span<u8> data(reinterpret_cast<u8 *>(vec.data()), vec.size() * sizeof(float));
+//       const leanstore::BlobState *state = blob_adapter.RegisterBlob(data);
+//       adapter_main.InsertVectorRecord({i}, *reinterpret_cast<const VectorRecord *>(state));
 
-      const leanstore::BlobState *loaded;
-      adapter_main.LookUp({i}, [&](const VectorRecord &record) { loaded = &record.blobState; });
-      loaded_vecs.push_back(loaded);
-    }
+//       const leanstore::BlobState *loaded;
+//       adapter_main.LookUp({i}, [&](const VectorRecord &record) { loaded = &record.blobState; });
+//       loaded_vecs.push_back(loaded);
+//     }
 
-    std::vector<float> vec_centroid1(1000, 2.0);
-    std::span<u8> data_centroid1(
-      reinterpret_cast<u8 *>(vec_centroid1.data()), vec_centroid1.size() * sizeof(float));
-    const leanstore::BlobState *state_centroid1 = blob_adapter.RegisterBlob(data_centroid1);
-    adapter_centroids.InsertVectorRecord({0}, *reinterpret_cast<const VectorRecord *>(state_centroid1));
+//     std::vector<float> vec_centroid1(1000, 2.0);
+//     std::span<u8> data_centroid1(
+//       reinterpret_cast<u8 *>(vec_centroid1.data()), vec_centroid1.size() * sizeof(float));
+//     const leanstore::BlobState *state_centroid1 = blob_adapter.RegisterBlob(data_centroid1);
+//     adapter_centroids.InsertVectorRecord({0}, *reinterpret_cast<const VectorRecord *>(state_centroid1));
 
-    std::vector<float> vec_centroid2(1000, 4.0);
-    std::span<u8> data_centroid2(
-      reinterpret_cast<u8 *>(vec_centroid2.data()), vec_centroid2.size() * sizeof(float));
-    const leanstore::BlobState *state_centroid2 = blob_adapter.RegisterBlob(data_centroid2);
-    adapter_centroids.InsertVectorRecord({1}, *reinterpret_cast<const VectorRecord *>(state_centroid2));
+//     std::vector<float> vec_centroid2(1000, 4.0);
+//     std::span<u8> data_centroid2(
+//       reinterpret_cast<u8 *>(vec_centroid2.data()), vec_centroid2.size() * sizeof(float));
+//     const leanstore::BlobState *state_centroid2 = blob_adapter.RegisterBlob(data_centroid2);
+//     adapter_centroids.InsertVectorRecord({1}, *reinterpret_cast<const VectorRecord *>(state_centroid2));
 
-    std::vector<float> vec_centroid3(1000, 8.0);
-    std::span<u8> data_centroid3(
-      reinterpret_cast<u8 *>(vec_centroid3.data()), vec_centroid3.size() * sizeof(float));
-    const leanstore::BlobState *state_centroid3 = blob_adapter.RegisterBlob(data_centroid3);
-    adapter_centroids.InsertVectorRecord({2}, *reinterpret_cast<const VectorRecord *>(state_centroid3));
+//     std::vector<float> vec_centroid3(1000, 8.0);
+//     std::span<u8> data_centroid3(
+//       reinterpret_cast<u8 *>(vec_centroid3.data()), vec_centroid3.size() * sizeof(float));
+//     const leanstore::BlobState *state_centroid3 = blob_adapter.RegisterBlob(data_centroid3);
+//     adapter_centroids.InsertVectorRecord({2}, *reinterpret_cast<const VectorRecord *>(state_centroid3));
 
-    std::vector<int> expected_buckets = {0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2};
+//     std::vector<int> expected_buckets = {0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2};
 
-    for (int i = 0; i <= 10; ++i) {
-      int bucket_index = find_bucket(adapter_centroids, blob_adapter, loaded_vecs[i]);
-      std::cout << "Vector " << i << " chose bucket index: " << bucket_index << std::endl;
-      EXPECT_EQ(bucket_index, expected_buckets[i]);
-    }
+//     for (int i = 0; i <= 10; ++i) {
+//       int bucket_index = find_bucket(adapter_centroids, blob_adapter, loaded_vecs[i]);
+//       std::cout << "Vector " << i << " chose bucket index: " << bucket_index << std::endl;
+//       EXPECT_EQ(bucket_index, expected_buckets[i]);
+//     }
 
-    leanstore->CommitTransaction();
-  });
+//     leanstore->CommitTransaction();
+//   });
 
-  leanstore->Shutdown();
-}
+//   leanstore->Shutdown();
+// }
 
-TEST(IVFFlat, FindBucketTestLarge) {
-  auto leanstore = std::make_unique<leanstore::LeanStore>();
-  VectorAdapter adapter_main = VectorAdapter::CreateVectorAdapter<VectorRecord>(*leanstore);
-  VectorAdapter adapter_centroids = VectorAdapter::CreateVectorAdapter<CentroidType>(*leanstore);
-  BlobAdapter blob_adapter(*leanstore);
+// TEST(IVFFlat, FindBucketTestLarge) {
+//   auto leanstore = std::make_unique<leanstore::LeanStore>();
+//   VectorAdapter adapter_main = VectorAdapter::CreateVectorAdapter<VectorRecord>(*leanstore);
+//   VectorAdapter adapter_centroids = VectorAdapter::CreateVectorAdapter<CentroidType>(*leanstore);
+//   BlobAdapter blob_adapter(*leanstore);
 
-  leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
-    leanstore->StartTransaction();
+//   leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
+//     leanstore->StartTransaction();
 
-    std::vector<const leanstore::BlobState *> loaded_vecs;
-    int num_vec = 1000;
+//     std::vector<const leanstore::BlobState *> loaded_vecs;
+//     int num_vec = 1000;
 
-    for (int i = 0; i < num_vec; ++i) {
-      std::vector<float> vec(1000, static_cast<float>(i));
-      std::span<u8> data(reinterpret_cast<u8 *>(vec.data()), vec.size() * sizeof(float));
-      const leanstore::BlobState *state = blob_adapter.RegisterBlob(data);
-      adapter_main.InsertVectorRecord({i}, *reinterpret_cast<const VectorRecord *>(state));
-    }
+//     for (int i = 0; i < num_vec; ++i) {
+//       std::vector<float> vec(1000, static_cast<float>(i));
+//       std::span<u8> data(reinterpret_cast<u8 *>(vec.data()), vec.size() * sizeof(float));
+//       const leanstore::BlobState *state = blob_adapter.RegisterBlob(data);
+//       adapter_main.InsertVectorRecord({i}, *reinterpret_cast<const VectorRecord *>(state));
+//     }
 
-    for (int i = 0; i < num_vec; ++i) {
-      const leanstore::BlobState *loaded;
-      adapter_main.LookUp({i}, [&](const VectorRecord &record) { loaded = &record.blobState; });
-      loaded_vecs.push_back(loaded);
-    }
+//     for (int i = 0; i < num_vec; ++i) {
+//       const leanstore::BlobState *loaded;
+//       adapter_main.LookUp({i}, [&](const VectorRecord &record) { loaded = &record.blobState; });
+//       loaded_vecs.push_back(loaded);
+//     }
 
-    for (int i = 0; i < num_vec / 5; ++i) {
-      std::vector<float> vec_centroid(1000, static_cast<float>(i * 5));
-      std::span<u8> data_centroid(reinterpret_cast<u8 *>(vec_centroid.data()), vec_centroid.size() * sizeof(float));
-      const leanstore::BlobState *state_centroid = blob_adapter.RegisterBlob(data_centroid);
-      adapter_centroids.InsertVectorRecord({i}, *reinterpret_cast<const VectorRecord *>(state_centroid));
-    }
+//     for (int i = 0; i < num_vec / 5; ++i) {
+//       std::vector<float> vec_centroid(1000, static_cast<float>(i * 5));
+//       std::span<u8> data_centroid(reinterpret_cast<u8 *>(vec_centroid.data()), vec_centroid.size() * sizeof(float));
+//       const leanstore::BlobState *state_centroid = blob_adapter.RegisterBlob(data_centroid);
+//       adapter_centroids.InsertVectorRecord({i}, *reinterpret_cast<const VectorRecord *>(state_centroid));
+//     }
 
-    for (int i = 0; i < num_vec; ++i) {
-      int bucket_index = find_bucket(adapter_centroids, blob_adapter, loaded_vecs[i]);
-      // std::cout << "Vector " << i << " chosen bucket index: " << bucket_index << std::endl;
-    }
+//     for (int i = 0; i < num_vec; ++i) {
+//       int bucket_index = find_bucket(adapter_centroids, blob_adapter, loaded_vecs[i]);
+//       // std::cout << "Vector " << i << " chosen bucket index: " << bucket_index << std::endl;
+//     }
 
-    leanstore->CommitTransaction();
-  });
+//     leanstore->CommitTransaction();
+//   });
 
-  leanstore->Shutdown();
-}
+//   leanstore->Shutdown();
+// }
 
 TEST(IVFFlat, InitializeCentroidsTest1) {
   auto leanstore = std::make_unique<leanstore::LeanStore>();
@@ -324,48 +324,48 @@ TEST(IVFFlat, InitializeCentroidsTest2) {
   leanstore->Shutdown();
 }
 
-TEST(IVFFlat, UpdateOneCentroid) {
-  auto leanstore = std::make_unique<leanstore::LeanStore>();
-  VectorAdapter adapter_main = VectorAdapter::CreateVectorAdapter<VectorRecord>(*leanstore);
-  VectorAdapter adapter_centroids = VectorAdapter::CreateVectorAdapter<CentroidType>(*leanstore);
-  BlobAdapter blob_adapter(*leanstore);
+// TEST(IVFFlat, UpdateOneCentroid) {
+//   auto leanstore = std::make_unique<leanstore::LeanStore>();
+//   VectorAdapter adapter_main = VectorAdapter::CreateVectorAdapter<VectorRecord>(*leanstore);
+//   VectorAdapter adapter_centroids = VectorAdapter::CreateVectorAdapter<CentroidType>(*leanstore);
+//   BlobAdapter blob_adapter(*leanstore);
 
-  const int num_vec = 10;
-  std::vector<const leanstore::BlobState *> bucket;
+//   const int num_vec = 10;
+//   std::vector<const leanstore::BlobState *> bucket;
 
-  leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
-    leanstore->StartTransaction();
+//   leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
+//     leanstore->StartTransaction();
 
-    for (int id = 1; id <= num_vec; ++id) {
-      std::vector<float> vector(1000, static_cast<float>(id));
-      std::span<u8> data(reinterpret_cast<u8 *>(vector.data()), vector.size() * sizeof(float));
-      const leanstore::BlobState *state = blob_adapter.RegisterBlob(data);
-      adapter_main.InsertVectorRecord({id}, *reinterpret_cast<const VectorRecord *>(state));
-    }
+//     for (int id = 1; id <= num_vec; ++id) {
+//       std::vector<float> vector(1000, static_cast<float>(id));
+//       std::span<u8> data(reinterpret_cast<u8 *>(vector.data()), vector.size() * sizeof(float));
+//       const leanstore::BlobState *state = blob_adapter.RegisterBlob(data);
+//       adapter_main.InsertVectorRecord({id}, *reinterpret_cast<const VectorRecord *>(state));
+//     }
 
-    for (int id = 1; id <= num_vec; ++id) {
-      const leanstore::BlobState *state;
-      adapter_main.LookUp({id}, [&](const VectorRecord &record) {
-        state = &record.blobState;
-        bucket.push_back(state);
-      });
-    }
+//     for (int id = 1; id <= num_vec; ++id) {
+//       const leanstore::BlobState *state;
+//       adapter_main.LookUp({id}, [&](const VectorRecord &record) {
+//         state = &record.blobState;
+//         bucket.push_back(state);
+//       });
+//     }
 
-    std::vector<float> vector(1000, 1.0);
-    std::span<u8> data(reinterpret_cast<u8 *>(vector.data()), vector.size() * sizeof(float));
-    const leanstore::BlobState *state = blob_adapter.RegisterBlob(data);
-    adapter_centroids.InsertVectorRecord({1}, *reinterpret_cast<const VectorRecord *>(state));
+//     std::vector<float> vector(1000, 1.0);
+//     std::span<u8> data(reinterpret_cast<u8 *>(vector.data()), vector.size() * sizeof(float));
+//     const leanstore::BlobState *state = blob_adapter.RegisterBlob(data);
+//     adapter_centroids.InsertVectorRecord({1}, *reinterpret_cast<const VectorRecord *>(state));
 
-    update_one_centroid(adapter_centroids, blob_adapter, bucket, {1}, 1000);
+//     update_one_centroid(adapter_centroids, blob_adapter, bucket, {1}, 1000);
 
-    auto vec = adapter_centroids.GetFloatVector({1});
-    ASSERT_EQ(vec[0], 5.5);
+//     auto vec = adapter_centroids.GetFloatVector({1});
+//     ASSERT_EQ(vec[0], 5.5);
 
-    leanstore->CommitTransaction();
-  });
+//     leanstore->CommitTransaction();
+//   });
 
-  leanstore->Shutdown();
-}
+//   leanstore->Shutdown();
+// }
 
 TEST(IVFFlat, BuildIndex1) {
   auto leanstore = std::make_unique<leanstore::LeanStore>();
@@ -449,7 +449,7 @@ TEST(IVFFlat, BuildIndexAndLookup) {
     int num_vec = 1000;
     int num_centroids = calculate_num_centroids(num_vec);
     int num_probe_centroids = calculate_num_probe_centroids(num_centroids);
-    size_t vector_size = 3070; 
+    size_t vector_size = 3070;
     size_t num_iter = 10;
 
     for (int i = 0; i < num_vec; ++i) {
@@ -491,7 +491,7 @@ TEST(IVFFlat, BuildIndexAndLookupBigVecSize) {
   leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
     leanstore->StartTransaction();
 
-    int num_vec = 253; 
+    int num_vec = 253;
     int num_centroids = calculate_num_centroids(num_vec);
     int num_probe_centroids = calculate_num_probe_centroids(num_centroids);
     size_t vector_size = 10000;

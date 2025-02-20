@@ -28,14 +28,14 @@ double get_search_time_hnsw() {
 NSWIndex::NSWIndex(std::vector<const BlobState *> &vertices)
     : vertices_(vertices) {}
 
-template <typename DistanceFunc>
-std::vector<size_t> select_neighbors_generic(DistanceFunc distance_func, const std::vector<size_t> &vertex_ids, size_t m) {
+
+std::vector<size_t> select_neighbors_float(BlobAdapter &adapter, const std::vector<float> &input_vec, const std::vector<size_t> &vertex_ids, const std::vector<const BlobState *> &vertices, size_t m) {
   ZoneScoped;
   std::vector<std::pair<float, size_t>> distances;
   distances.reserve(vertex_ids.size());
 
-  for (const auto vert : vertex_ids) {
-    distances.emplace_back(distance_func(vert), vert);
+  for (const auto id : vertex_ids) {
+    distances.emplace_back(distance_vec_blob(adapter, input_vec, vertices[id]), id);
   }
 
   std::sort(distances.begin(), distances.end());
@@ -49,25 +49,16 @@ std::vector<size_t> select_neighbors_generic(DistanceFunc distance_func, const s
   return selected_vs;
 }
 
-std::vector<size_t> select_neighbors_float(BlobAdapter &adapter, const std::vector<float> &input_vec, const std::vector<size_t> &vertex_ids, const std::vector<const BlobState *> &vertices, size_t m) {
-  ZoneScoped;
-  auto distance_func = [&](size_t vert) {
-    return distance_vec_blob(adapter, input_vec, vertices[vert]);
-  };
-  return select_neighbors_generic(distance_func, vertex_ids, m);
-}
 
 std::vector<size_t> select_neighbors_blob(BlobAdapter &adapter, const BlobState *input_vec, const std::vector<size_t> &vertex_ids, const std::vector<const BlobState *> &vertices, size_t m) {
   ZoneScoped;
-  auto distance_func = [&](size_t vert) {
-    return distance_blob(adapter, input_vec, vertices[vert]);
-  };
-  return select_neighbors_generic(distance_func, vertex_ids, m);
+  std::vector<float> input_vec_float = adapter.GetFloatVectorFromBlobState(input_vec);
+  return select_neighbors_float(adapter, input_vec_float, vertex_ids, vertices, m);
 }
 
-template <typename VectorType, typename DistanceFunc>
-std::vector<size_t> NSWIndex::search_layer_template(BlobAdapter &adapter, const VectorType &base_vector, size_t limit, const std::vector<size_t> &entry_points, DistanceFunc distance_func) {
-  ZoneScoped;
+
+std::vector<size_t> NSWIndex::search_layer(BlobAdapter &adapter, const std::vector<float> &base_vector, size_t limit, const std::vector<size_t> &entry_points) {
+ZoneScoped;
   assert(limit > 0);
   std::vector<size_t> candidates;
   std::unordered_set<size_t> visited;
@@ -75,7 +66,7 @@ std::vector<size_t> NSWIndex::search_layer_template(BlobAdapter &adapter, const 
   std::priority_queue<std::pair<float, size_t>, std::vector<std::pair<float, size_t>>, std::less<>> result_set;
 
   for (const auto entry_point : entry_points) {
-    float dist = distance_func(adapter, base_vector, vertices_[entry_point]);
+    float dist = distance_vec_blob(adapter, base_vector, vertices_[entry_point]);
     explore_q.emplace(dist, entry_point);
     result_set.emplace(dist, entry_point);
     visited.emplace(entry_point);
@@ -94,7 +85,7 @@ std::vector<size_t> NSWIndex::search_layer_template(BlobAdapter &adapter, const 
     for (const auto &neighbor : edges_[vertex]) {
       if (visited.find(neighbor) == visited.end()) {
         visited.emplace(neighbor);
-        auto dist = distance_func(adapter, base_vector, vertices_[neighbor]);
+        auto dist = distance_vec_blob(adapter, base_vector, vertices_[neighbor]);
         explore_q.emplace(dist, neighbor);
         result_set.emplace(dist, neighbor);
 
@@ -114,18 +105,11 @@ std::vector<size_t> NSWIndex::search_layer_template(BlobAdapter &adapter, const 
   return candidates;
 }
 
-std::vector<size_t> NSWIndex::search_layer(BlobAdapter &adapter, const std::vector<float> &base_vector, size_t limit, const std::vector<size_t> &entry_points) {
-  ZoneScoped;
-  return search_layer_template(adapter, base_vector, limit, entry_points, [](BlobAdapter &adpt, const auto &base_vector, const auto &vertex) {
-    return distance_vec_blob(adpt, base_vector, vertex);
-  });
-}
-
 std::vector<size_t> NSWIndex::search_layer(BlobAdapter &adapter, const BlobState *base_vector, size_t limit, const std::vector<size_t> &entry_points) {
   ZoneScoped;
-  return search_layer_template(adapter, base_vector, limit, entry_points, [](BlobAdapter &adpt, const auto &base_vector, const auto &vertex) {
-    return distance_blob(adpt, vertex, base_vector);
-  });
+  std::vector<float> input_vec_float = adapter.GetFloatVectorFromBlobState(base_vector);
+  return search_layer(adapter, input_vec_float, limit, entry_points);
+  
 }
 
 auto NSWIndex::add_vertex(size_t vertex_id) {

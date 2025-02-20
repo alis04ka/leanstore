@@ -13,9 +13,6 @@ private:
   std::unordered_map<size_t, std::vector<size_t>> edges_{};
   std::vector<size_t> in_vertices_{};
 
-  template <typename VectorType, typename DistanceFunc>
-  std::vector<size_t> search_layer_template(BlobAdapter &adapter, const VectorType &base_vector, size_t limit, const std::vector<size_t> &entry_points, DistanceFunc distance_func);
-
 public:
   NSWIndex(std::vector<const BlobState *> &vertices);
   std::vector<size_t> search_layer(BlobAdapter &adapter, const BlobState *input_vector, size_t limit, const std::vector<size_t> &entry_points);

@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
   std::vector<std::vector<float>> query_vectors;
   query_vectors.reserve(FLAGS_num_query_vectors);
 
-  std::cout << "Starting generating benchmark Data for" + FLAGS_index_type + "\n";
+  std::cout << "Starting generating benchmark data for " + FLAGS_index_type + "\n";
   std::cout << "Vector size: " << FLAGS_vector_size << "\n";
   std::cout << "Number of vectors: " << FLAGS_num_vectors << "\n";
   std::cout << "stddev: " << FLAGS_std_dev << "\n";
