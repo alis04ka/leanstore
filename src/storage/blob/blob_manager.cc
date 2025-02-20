@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <span>
+#include <tracy/Tracy.hpp>
 
 namespace leanstore::storage::blob {
 
@@ -247,20 +248,25 @@ void BlobManager::ExtendExistingBlob(std::span<const u8> payload, BlobState *out
  * @brief Load the full content of the corresponding BlobState
  */
 void BlobManager::LoadBlobContent(const BlobState *blob, u64 required_load_size) {
+  ZoneScoped;
   // Try to load all extents until meets the requirement
   u64 load_size = 0;
   LargePageList to_read_extents;
-  for (auto &extent : blob->extents) {
-    if (!extent_loaded.contains(extent.start_pid)) {
-      extent_loaded.add(extent.start_pid);
-      to_read_extents.emplace_back(extent.start_pid, extent.page_cnt);
+  {
+    ZoneScopedN("gather extents");
+    for (auto &extent : blob->extents) {
+      if (!extent_loaded.contains(extent.start_pid)) {
+        extent_loaded.add(extent.start_pid);
+        to_read_extents.emplace_back(extent.start_pid, extent.page_cnt);
+      }
+      load_size += extent.page_cnt * PAGE_SIZE;
+      if (load_size >= required_load_size) { break; }
     }
-    load_size += extent.page_cnt * PAGE_SIZE;
-    if (load_size >= required_load_size) { break; }
   }
 
   // If the load size still not meet the requirement, then we load the special block
   if (load_size < required_load_size) {
+    ZoneScopedN("gather tail extent");
     Ensure(blob->extents.special_blk.in_used);
     blob->extents.special_blk.SplitToExtents([&](pageid_t start_pid, extidx_t index) {
       extent_loaded.add(start_pid);
@@ -269,8 +275,11 @@ void BlobManager::LoadBlobContent(const BlobState *blob, u64 required_load_size)
     Ensure(load_size + blob->extents.special_blk.page_cnt * PAGE_SIZE >= required_load_size);
   }
 
+  {
+    ZoneScopedN("read extents");
+    if (!to_read_extents.empty()) { buffer_->ReadExtents(to_read_extents); }
+  }
   // Trigger the necessary read
-  if (!to_read_extents.empty()) { buffer_->ReadExtents(to_read_extents); }
 }
 
 /**
@@ -472,6 +481,7 @@ void BlobManager::RemoveBlob(const BlobState *blob) {
 }
 
 void BlobManager::LoadBlob(const BlobState *blob, u64 required_load_size, const BlobCallbackFunc &cb) {
+  ZoneScoped;
   // Don't read more the the capacity of the Blob
   if (required_load_size > blob->blob_size || required_load_size == 0) { required_load_size = blob->blob_size; }
 

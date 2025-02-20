@@ -1,6 +1,6 @@
 #pragma once
-#include "schema.h"
-#include "storage/vectordb/vector_adapter.h"
+#include <span>
+#include <vector>
 
 namespace leanstore::storage::vector {
 

@@ -78,6 +78,7 @@ set(CORE_LIBS
     yyjson
     typefold
     croaring
+    TracyClient
     fuse)
 
 set(THIRD_PARTY_DEPENDENCIES "${CORE_LIBS}" "${DB_CLIENT_LIBS}" "${COMPRESS_LIBS}")

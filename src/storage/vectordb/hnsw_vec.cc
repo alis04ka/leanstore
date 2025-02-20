@@ -2,6 +2,7 @@
 #include "storage/vectordb/timer.h"
 #include "storage/vectordb/util.h"
 #include <random>
+#include <tracy/Tracy.hpp>
 
 namespace leanstore::storage::vector::vec {
 
@@ -15,16 +16,18 @@ static void report_timing() {
   std::cout << "Reporting timing....." << std::endl;
   std::cout << "Build_index time: " << static_cast<double>(build_index_time) / 1000.0f << "ms\n";
 }
-#endif
 
 double get_search_time_hnsw_vec() {
   return static_cast<double>(search_time);
 }
 
+#endif
+
 NSWIndex::NSWIndex(std::vector<std::span<float>> &vertices)
     : vertices_(vertices) {}
 
 std::vector<size_t> select_neighbors_vec(const std::span<const float> input_vec, const std::vector<size_t> &vertex_ids, std::vector<std::span<float>> &vertices, size_t m) {
+  ZoneScoped;
   std::vector<std::pair<float, size_t>> distances;
   distances.reserve(vertex_ids.size());
 
@@ -44,6 +47,7 @@ std::vector<size_t> select_neighbors_vec(const std::span<const float> input_vec,
 }
 
 std::vector<size_t> NSWIndex::search_layer_vec(const std::span<const float> base_vector, size_t limit, const std::vector<size_t> &entry_points) {
+  ZoneScoped;
   // for (const auto &[key, value] : edges_) {
   //   std::cout << "Vertex " << key << " has " << value.size() << " edges." << std::endl;
   // }
@@ -113,6 +117,7 @@ HNSWIndex::HNSWIndex(std::vector<std::vector<float>> &&vectors, size_t ef_constr
 }
 
 void HNSWIndex::build_index_vec() {
+  ZoneScoped;
   START_TIMER(t);
   for (std::vector<float> &vertex : vectors) {
     insert_vector_entry_vec(vertex);
@@ -124,6 +129,7 @@ void HNSWIndex::build_index_vec() {
 }
 
 std::vector<size_t> HNSWIndex::scan_vector_entry_vec(const std::span<const float> base_vector, size_t limit) {
+  ZoneScoped;
   START_TIMER(t);
   std::vector<size_t> entry_points{layers_[layers_.size() - 1].default_entry_point_vec()};
   for (int level = layers_.size() - 1; level >= 1; level--) {
@@ -138,9 +144,10 @@ std::vector<size_t> HNSWIndex::scan_vector_entry_vec(const std::span<const float
 }
 
 std::vector<std::span<float>> HNSWIndex::find_n_closest_vectors_vec(const std::vector<float> &input_vec, size_t n) {
+  ZoneScoped;
   std::vector<size_t> indices_res = scan_vector_entry_vec(input_vec, n);
   std::vector<std::span<float>> vectors_res;
-  for (size_t i = 0; i < vectors.size(); i++) {
+  for (size_t i = 0; i < indices_res.size(); i++) {
     vectors_res.push_back(vectors[indices_res[i]]);
   }
   return vectors_res;
@@ -153,6 +160,7 @@ size_t HNSWIndex::add_vertex_vec(std::span<float> vec) {
 }
 
 void HNSWIndex::insert_vector_entry_vec(const std::span<float> key) {
+  ZoneScoped;
   std::uniform_real_distribution<double> level_dist(0.0, 1.0);
   auto vertex_id = add_vertex_vec(key);
   int target_level = static_cast<int>(std::floor(-std::log(level_dist(generator_)) * m_l_));

@@ -64,7 +64,7 @@ auto VectorAdapter::GetFloatVector(const VectorRecord::Key &key) -> std::vector<
   LookUp(key, [&](const VectorRecord &record) {
     blob_adapter.LoadBlob(&record.blobState, [&](std::span<const u8> blob) {
        std::span<const float> span(reinterpret_cast<const float *>(blob.data()), blob.size() / sizeof(float));
-        vec_to_return.assign(span.begin(), span.end()); }, false);
+        vec_to_return.assign(span.begin(), span.end()); });
   });
   return vec_to_return;
 }

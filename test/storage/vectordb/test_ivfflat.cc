@@ -426,8 +426,7 @@ TEST(IVFFlat, AssertSize) {
           &record.blobState,
           [&](std::span<const uint8_t> span) {
             EXPECT_EQ(span.size(), vector_size * sizeof(float));
-          },
-          false);
+          });
 
         return false;
       });
@@ -450,7 +449,7 @@ TEST(IVFFlat, BuildIndexAndLookup) {
     int num_vec = 1000;
     int num_centroids = calculate_num_centroids(num_vec);
     int num_probe_centroids = calculate_num_probe_centroids(num_centroids);
-    size_t vector_size = 3070; // 3080 geht nichtmehr
+    size_t vector_size = 3070; 
     size_t num_iter = 10;
 
     for (int i = 0; i < num_vec; ++i) {
@@ -477,8 +476,6 @@ TEST(IVFFlat, BuildIndexAndLookup) {
       std::cout << res[0] << std::endl;
     }
 
-    std::cout << "Search time: " << get_search_time_ivfflat() << " μs" << std::endl;
-
     leanstore->CommitTransaction();
   });
 
@@ -494,7 +491,7 @@ TEST(IVFFlat, BuildIndexAndLookupBigVecSize) {
   leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
     leanstore->StartTransaction();
 
-    int num_vec = 253; //252 geht noch
+    int num_vec = 253; 
     int num_centroids = calculate_num_centroids(num_vec);
     int num_probe_centroids = calculate_num_probe_centroids(num_centroids);
     size_t vector_size = 10000;

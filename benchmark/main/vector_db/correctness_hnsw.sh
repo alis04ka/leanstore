@@ -1,0 +1,15 @@
+./build/benchmark/VectorIndexCorrectness -worker_count=1 \
+                            -bm_virtual_gb=16 \
+                            -bm_physical_gb=16 \
+                            -db_path=/dev/nvme0n1p3 \
+                            -blob_logging_variant=1 \
+                            --index_type="hnsw" \
+                            --benchmark_baseline=true \
+                            --vector_size=5000 \
+                            --num_vectors=1000 \
+                            --std_dev=5.0 \
+                            --ef_construction=60 \
+                            --ef_search=45 \
+                            --m_max=8 \
+                            --num_query_vectors=1000 \
+                            --num_result_vectors=30\

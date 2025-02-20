@@ -4,7 +4,7 @@
 #include <span>
 #include <unordered_map>
 
-#define TIME_INDEX
+//#define TIME_INDEX
 
 namespace leanstore::storage::vector {
 namespace vec {

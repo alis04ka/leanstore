@@ -2,6 +2,7 @@
 #include "storage/vectordb/timer.h"
 #include "storage/vectordb/util.h"
 #include <random>
+#include <tracy/Tracy.hpp>
 
 namespace leanstore::storage::vector::vec {
 
@@ -25,11 +26,12 @@ static void report_timing() {
   std::cout << "---------Distance_vec time: " << static_cast<double>(distance_vec_time) / 1000.0f << "ms\n";
   std::cout << "------Update_centroids time: " << static_cast<double>(update_centroids_time) / 1000.0f << "ms\n";
 }
-#endif
 
 double get_search_time_ivfflat_vec() {
   return static_cast<double>(search_time);
 }
+#endif
+
 
 int calculate_num_centroids_vec(int num_vec) {
   if (num_vec < 3)
@@ -44,6 +46,7 @@ int calculate_num_probe_centroids_vec(int num_centroids) {
 }
 
 int find_bucket_vec(const std::vector<float> &input_vec, std::vector<Centroid> &centroids) {
+  ZoneScoped;
   START_TIMER(t);
   float min_dist = MAXFLOAT;
   int min_index = -1;
@@ -66,6 +69,7 @@ int find_bucket_vec(const std::vector<float> &input_vec, std::vector<Centroid> &
 }
 
 std::vector<int> find_k_closest_centroids_vec(const std::vector<float> &input_vec, const std::vector<Centroid> &centroids, size_t k) {
+  ZoneScoped;
   START_TIMER(t);
   std::vector<std::pair<float, int>> distances;
 
@@ -85,6 +89,7 @@ std::vector<int> find_k_closest_centroids_vec(const std::vector<float> &input_ve
 }
 
 void initialize_centroids_vec(const std::vector<std::vector<float>> &vectors, std::vector<Centroid> &centroids, size_t num_centroids) {
+  ZoneScoped;
   START_TIMER(t);
   size_t num_vectors = vectors.size();
   size_t num_to_assign = std::min(num_centroids, num_vectors);
@@ -97,7 +102,7 @@ void initialize_centroids_vec(const std::vector<std::vector<float>> &vectors, st
   while (random_indices.size() < num_to_assign) {
     size_t random_index = dist(gen);
     if (random_indices.insert(random_index).second) {
-      std::cout << "Random index chosen: " << random_index << std::endl;
+      //std::cout << "Random index chosen: " << random_index << std::endl;
     }
   }
 
@@ -108,10 +113,11 @@ void initialize_centroids_vec(const std::vector<std::vector<float>> &vectors, st
   }
 
   END_TIMER(t, initialize_centroids_time);
-  std::cout << "Centroid initialization complete. Total assigned: " << num_to_assign << std::endl;
+  //std::cout << "Centroid initialization complete. Total assigned: " << num_to_assign << std::endl;
 }
 
 void update_one_centroid_vec(Centroid &centroid, size_t vector_size) {
+  ZoneScoped;
   if (centroid.bucket.empty()) {
     return;
   }
@@ -137,6 +143,7 @@ IVFFlatIndexVec::IVFFlatIndexVec(size_t num_centroids, size_t num_probe_centroid
 }
 
 void IVFFlatIndexVec::build_index_vec() {
+  ZoneScoped;
   START_TIMER(t);
   centroids.reserve(num_centroids);
   initialize_centroids_vec(vectors, centroids, num_centroids);
@@ -152,6 +159,7 @@ std::vector<Centroid> IVFFlatIndexVec::get_centroids() {
 }
 
 void IVFFlatIndexVec::update_centroids_vec() {
+  ZoneScoped;
   START_TIMER(t);
   for (size_t i = 0; i < centroids.size(); i++) {
     update_one_centroid_vec(centroids[i], vector_size);
@@ -160,9 +168,10 @@ void IVFFlatIndexVec::update_centroids_vec() {
 }
 
 void IVFFlatIndexVec::assign_vectors_to_centroids_vec() {
+  ZoneScoped;
   START_TIMER(t);
   for (size_t i = 0; i < num_iter; i++) {
-    std::cout << "i = " << i << std::endl;
+    //std::cout << "i = " << i << std::endl;
     for (size_t i = 0; i < centroids.size(); i++) {
       centroids[i].bucket.clear();
     }
@@ -178,6 +187,7 @@ void IVFFlatIndexVec::assign_vectors_to_centroids_vec() {
 }
 
 std::vector<std::span<float>> IVFFlatIndexVec::find_n_closest_vectors_vec(const std::vector<float> &input_vec, size_t n) {
+  ZoneScoped;
   START_TIMER(t);
   std::vector<int> indices = find_k_closest_centroids_vec(input_vec, centroids, num_probe_centroids);
   std::vector<std::span<float>> relevant_vectors;

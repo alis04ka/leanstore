@@ -65,16 +65,24 @@ struct BlobState {
   }
 
   void print_float() const {
-   // std::cout << "BlobState: " << BlobID() << "\n";
+    std::cout << "BlobState: " << BlobID() << "\n";
+    std::cout << "Extents: \n";
+    for (int i = 0; i < extents.NumberOfExtents(); i++) {
+      std::cout << extents.extent_pid[i] << ", ";
+    }
+    std::cout << "\n";
+    std::cout << "Talextent: \n";
+    std::cout << extents.special_blk.start_pid << "\n";
+
     int prefix_size = PREFIX_LENGTH / sizeof(float);
     const float *float_prefix = reinterpret_cast<const float *>(blob_prefix);
     std::cout << "Prefix: ";
     for (int i = 0; i < prefix_size; i++) { std::cout << float_prefix[i] << ", "; }
     std::cout << "\n";
-    //std::cout << "Size: " << blob_size << "\n";
+    std::cout << "Size: " << blob_size << "\n";
   }
 
-  
+
   auto operator!=(const BlobState &other) -> bool { return BlobID() != other.BlobID(); }
 
   auto BlobID() const -> UniqueID {

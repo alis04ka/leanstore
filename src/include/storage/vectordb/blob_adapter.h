@@ -20,7 +20,7 @@ public:
 
   auto RegisterBlob(std::span<const u8> blob_payload) -> const BlobState *;
   auto UpdateBlob(std::span<const u8> blob_payload, leanstore::BlobState *prev_blob) -> const BlobState *;
-  void LoadBlob(const BlobState *state, const std::function<void(std::span<const u8>)> &read_cb, bool partial_load);
+  void LoadBlob(const BlobState *state, const std::function<void(std::span<const u8>)> &read_cb);
   void RemoveBlob(leanstore::BlobState *state);
   auto GetFloatVectorFromBlobState(const BlobState *blob_state) -> std::vector<float>;
 };

@@ -3,8 +3,6 @@
 #include "storage/vectordb/vector_index.h"
 #include <random>
 
-#define TIME_INDEX
-
 namespace leanstore::storage::vector {
 
 double get_search_time_hnsw();

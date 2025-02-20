@@ -1,7 +1,6 @@
 #pragma once
-#include "schema.h"
-#include "storage/vectordb/vector_adapter.h"
-
+#include "leanstore/leanstore.h"
+#include <vector>
 namespace leanstore::storage::vector {
 
 class VectorIndex {

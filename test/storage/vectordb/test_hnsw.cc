@@ -98,17 +98,6 @@ TEST(HNSW, BuildIndexNonTrivial) {
       std::cout << std::endl;
     }
 
-    std::cout << "Result knn: " << std::endl;
-    for (auto neighbor_id : res_knn) {
-      for (int i = 0; i < 5; ++i) {
-        std::cout << all_vecs[neighbor_id][i] << " ";
-      }
-      std::cout << std::endl;
-    }
-
-    std::cout << "\nSearch time hnsw: " << get_search_time_hnsw() << " μs" << std::endl;
-    float error = knn_hnsw_error(blob_adapter, search_vector, res_knn, res_hnsw, all_vecs);
-
     leanstore->CommitTransaction();
   });
 

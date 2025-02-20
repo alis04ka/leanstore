@@ -23,5 +23,4 @@ TEST(HNSWVec, BuildIndex) {
     std::cout << res[i] << std::endl;
   }
 
-  std::cout << "Search time: " << get_search_time_hnsw_vec() << " μs" << std::endl;
 }

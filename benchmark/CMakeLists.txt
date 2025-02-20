@@ -52,7 +52,8 @@ endfunction()
 # add_benchmark(MicroQueue micro/queue.cc)
 # add_benchmark(MicroBitmap micro/bitmap.cc)
 # add_benchmark(MicroSearch micro/search.cc)
-add_benchmark(IVFFlat_1 main/vector_db/bm_ivfflat.cc)
+add_benchmark(VectorIndexBM main/vector_db/bm_index.cc)
+add_benchmark(VectorIndexCorrectness main/vector_db/correctness.cc)
 
 # ---------------------------------------------------------------------------
 # Tests for custom prototypes

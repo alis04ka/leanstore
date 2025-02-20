@@ -22,7 +22,6 @@ TEST(IVFFlatVec, BuildIndexAndLookup) {
 
   std::vector<float> input_vec(vector_size, 30.6);
   std::vector<std::span<float>> results = index.find_n_closest_vectors_vec(input_vec, 8);
-  std::cout << "Search time: " << get_search_time_ivfflat_vec() << " μs" << std::endl;
 
   std::vector<float> expected_results = {31.0, 30.0, 32.0, 29.0, 33.0, 28.0, 34.0, 27.0};
   for (size_t i = 0; i < results.size(); i++) {

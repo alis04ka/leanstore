@@ -2,6 +2,7 @@
 #include "storage/vectordb/timer.h"
 #include "storage/vectordb/util.h"
 #include <random>
+#include <tracy/Tracy.hpp>
 
 namespace leanstore::storage::vector {
 
@@ -15,17 +16,21 @@ static void report_timing() {
   std::cout << "Reporting timing....." << std::endl;
   std::cout << "Build_index time: " << static_cast<double>(build_index_time) / 1000.0f << "ms\n";
 }
-#endif
 
 double get_search_time_hnsw() {
   return static_cast<double>(search_time);
 }
+
+#endif
+
+
 
 NSWIndex::NSWIndex(std::vector<const BlobState *> &vertices)
     : vertices_(vertices) {}
 
 template <typename DistanceFunc>
 std::vector<size_t> select_neighbors_generic(DistanceFunc distance_func, const std::vector<size_t> &vertex_ids, size_t m) {
+  ZoneScoped;
   std::vector<std::pair<float, size_t>> distances;
   distances.reserve(vertex_ids.size());
 
@@ -45,6 +50,7 @@ std::vector<size_t> select_neighbors_generic(DistanceFunc distance_func, const s
 }
 
 std::vector<size_t> select_neighbors_float(BlobAdapter &adapter, const std::vector<float> &input_vec, const std::vector<size_t> &vertex_ids, const std::vector<const BlobState *> &vertices, size_t m) {
+  ZoneScoped;
   auto distance_func = [&](size_t vert) {
     return distance_vec_blob(adapter, input_vec, vertices[vert]);
   };
@@ -52,6 +58,7 @@ std::vector<size_t> select_neighbors_float(BlobAdapter &adapter, const std::vect
 }
 
 std::vector<size_t> select_neighbors_blob(BlobAdapter &adapter, const BlobState *input_vec, const std::vector<size_t> &vertex_ids, const std::vector<const BlobState *> &vertices, size_t m) {
+  ZoneScoped;
   auto distance_func = [&](size_t vert) {
     return distance_blob(adapter, input_vec, vertices[vert]);
   };
@@ -60,6 +67,7 @@ std::vector<size_t> select_neighbors_blob(BlobAdapter &adapter, const BlobState 
 
 template <typename VectorType, typename DistanceFunc>
 std::vector<size_t> NSWIndex::search_layer_template(BlobAdapter &adapter, const VectorType &base_vector, size_t limit, const std::vector<size_t> &entry_points, DistanceFunc distance_func) {
+  ZoneScoped;
   assert(limit > 0);
   std::vector<size_t> candidates;
   std::unordered_set<size_t> visited;
@@ -107,12 +115,14 @@ std::vector<size_t> NSWIndex::search_layer_template(BlobAdapter &adapter, const 
 }
 
 std::vector<size_t> NSWIndex::search_layer(BlobAdapter &adapter, const std::vector<float> &base_vector, size_t limit, const std::vector<size_t> &entry_points) {
+  ZoneScoped;
   return search_layer_template(adapter, base_vector, limit, entry_points, [](BlobAdapter &adpt, const auto &base_vector, const auto &vertex) {
     return distance_vec_blob(adpt, base_vector, vertex);
   });
 }
 
 std::vector<size_t> NSWIndex::search_layer(BlobAdapter &adapter, const BlobState *base_vector, size_t limit, const std::vector<size_t> &entry_points) {
+  ZoneScoped;
   return search_layer_template(adapter, base_vector, limit, entry_points, [](BlobAdapter &adpt, const auto &base_vector, const auto &vertex) {
     return distance_blob(adpt, vertex, base_vector);
   });
@@ -128,12 +138,22 @@ void NSWIndex::connect(size_t vertex_a, size_t vertex_b) {
 }
 
 inline size_t compute_m_max(size_t N, size_t m_min = 4, size_t alpha = 2) {
-  if (N < 2) return m_min; 
+  ZoneScoped;
+  if (N < 2) return m_min;
   return std::max(m_min, static_cast<size_t>(std::floor(alpha * std::log(static_cast<double>(N)))));
 }
 
 HNSWIndex::HNSWIndex(VectorAdapter db, BlobAdapter blob_adapter, size_t ef_construction, size_t ef_search, size_t m_max)
     : db(db), blob_adapter(blob_adapter), ef_construction_(ef_construction), ef_search_(ef_search), m_max_(m_max) {
+
+  m_l_ = 1.0 / std::log(m_max);
+  std::random_device rand_dev;
+  generator_ = std::mt19937(rand_dev());
+}
+
+void HNSWIndex::build_index() {
+  ZoneScoped;
+  START_TIMER(t);
   vector_size = db.Count();
   vectors_storage.resize(vector_size);
   vectors.resize(vector_size);
@@ -148,15 +168,6 @@ HNSWIndex::HNSWIndex(VectorAdapter db, BlobAdapter blob_adapter, size_t ef_const
     });
   layers_.reserve(100);
   layers_.emplace_back(vertices_);
-  //m_max = compute_m_max(vector_size);
-  std::cout << "m max is " << m_max << std::endl;
-  m_l_ = 1.0 / std::log(m_max);
-  std::random_device rand_dev;
-  generator_ = std::mt19937(rand_dev());
-}
-
-void HNSWIndex::build_index() {
-  START_TIMER(t);
   for (const BlobState *vertex : vectors) {
     insert_vector_entry(vertex);
   }
@@ -167,6 +178,7 @@ void HNSWIndex::build_index() {
 }
 
 std::vector<size_t> HNSWIndex::scan_vector_entry(const std::vector<float> &base_vector, size_t limit) {
+  ZoneScoped;
   std::vector<size_t> entry_points{layers_[layers_.size() - 1].default_entry_point()};
   for (int level = layers_.size() - 1; level >= 1; level--) {
     auto nearest_elements = layers_[level].search_layer(blob_adapter, base_vector, ef_search_, entry_points);
@@ -179,6 +191,7 @@ std::vector<size_t> HNSWIndex::scan_vector_entry(const std::vector<float> &base_
 }
 
 std::vector<const BlobState *> HNSWIndex::find_n_closest_vectors(const std::vector<float> &input_vec, size_t n) {
+  ZoneScoped;
   START_TIMER(t);
   std::vector<size_t> neighbors = scan_vector_entry(input_vec, n);
   std::vector<const BlobState *> states_res;
@@ -196,6 +209,7 @@ size_t HNSWIndex::add_vertex(const BlobState *vec) {
 }
 
 void HNSWIndex::insert_vector_entry(const BlobState *key) {
+  ZoneScoped;
   std::uniform_real_distribution<double> level_dist(0.0, 1.0);
   auto vertex_id = add_vertex(key);
   int target_level = static_cast<int>(std::floor(-std::log(level_dist(generator_)) * m_l_));

@@ -1,0 +1,15 @@
+./build/benchmark/VectorIndexCorrectness -worker_count=1 \
+                            -bm_virtual_gb=16 \
+                            -bm_physical_gb=16 \
+                            -db_path=/dev/nvme0n1p3 \
+                            -blob_logging_variant=1 \
+                            --index_type="ivfflat" \
+                            --benchmark_baseline=true \
+                            --vector_size=5000 \
+                            --num_vectors=1000 \
+                            --std_dev=5.0 \
+                            --num_centroids=7 \
+                            --num_probe_centroids=3 \
+                            --num_iterations=5 \
+                            --num_query_vectors=1000 \
+                            --num_result_vectors=15 \

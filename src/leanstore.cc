@@ -11,6 +11,7 @@
 #include <functional>
 #include <memory>
 #include <new>
+#include "tracy/Tracy.hpp"
 
 namespace leanstore {
 
@@ -163,6 +164,7 @@ auto LeanStore::CreateNewBlob(std::span<const u8> blob_payload, BlobState *prev_
 }
 
 void LeanStore::LoadBlob(const BlobState *blob_t, const storage::blob::BlobCallbackFunc &read_cb, bool partial_load) {
+  ZoneScoped;
   if (partial_load) {
     blob_manager->LoadBlob(blob_t, PAGE_SIZE, read_cb);
   } else {

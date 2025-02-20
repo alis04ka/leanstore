@@ -2,7 +2,8 @@
 #include "storage/vectordb/vector_index_base.h"
 #include <span>
 #include <vector>
-#define TIME_INDEX
+
+//#define TIME_INDEX
 
 namespace leanstore::storage::vector {
 

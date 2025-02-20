@@ -4,8 +4,6 @@
 #include "storage/vectordb/vector_index.h"
 #include <iostream>
 
-#define TIME_INDEX
-
 namespace leanstore::storage::vector {
 
 template <typename T>
