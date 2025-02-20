@@ -8,9 +8,9 @@
                             --vector_size=5000 \
                             --num_vectors=1000 \
                             --std_dev=5.0 \
-                            --num_centroids=7 \
-                            --num_probe_centroids=3 \
+                            --num_centroids=64 \
+                            --num_probe_centroids=12 \
                             --num_iterations=5 \
                             --benchmark_lookup_perf=true \
-                            --num_query_vectors=1000 \
+                            --num_query_vectors=100 \
                             --num_result_vectors=15 \

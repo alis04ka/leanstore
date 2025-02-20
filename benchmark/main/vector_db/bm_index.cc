@@ -51,7 +51,7 @@ DEFINE_bool(benchmark_lookup_perf, true, "wheter to run lookup benchmarks");
 DEFINE_uint64(num_query_vectors, 1000, "how many lookup requests to send");
 DEFINE_uint64(num_result_vectors, 10, "how many results the lookup should return");
 
-static unsigned int seed = std::chrono::steady_clock::now().time_since_epoch().count();
+static unsigned int seed =  42;
 static std::mt19937 gen(seed);
 
 // Utility function to print timing
