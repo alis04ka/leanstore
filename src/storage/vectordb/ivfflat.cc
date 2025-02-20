@@ -1,8 +1,8 @@
 #include "storage/vectordb/ivfflat.h"
 #include "storage/vectordb/timer.h"
 #include "storage/vectordb/util.h"
-#include <random>
 #include "tracy/Tracy.hpp"
+#include <random>
 
 namespace leanstore::storage::vector {
 
@@ -34,7 +34,6 @@ double get_search_time_ivfflat() {
 
 #endif
 
-
 int calculate_num_centroids(int num_vec) {
   if (num_vec < 5)
     return num_vec;
@@ -47,17 +46,19 @@ int calculate_num_probe_centroids(int num_centroids) {
   return std::max(5, static_cast<int>(num_centroids * 0.15));
 }
 
-int find_bucket(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, const BlobState *input_vec) {
+int find_bucket(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, const BlobState *input_vec, std::vector<Centroid>& centroids) {
   ZoneScoped;
   START_TIMER(t);
   float min_dist = MAXFLOAT;
   int min_index = -1;
   int i = 0;
 
+  std::vector<float> input_vec_float = blob_adapter.GetFloatVectorFromBlobState(input_vec);
+
   adapter_centroids.Scan({0},
     [&](const VectorRecord::Key &key, const VectorRecord &record) {
       START_TIMER(t1);
-      float cur_dist = distance_blob(blob_adapter, input_vec, &record.blobState);
+      float cur_dist = distance_vec_blob(blob_adapter, input_vec_float, &record.blobState);
       END_TIMER(t1, distance_blob_time);
       if (cur_dist < min_dist) {
         min_dist = cur_dist;
@@ -67,8 +68,13 @@ int find_bucket(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, con
       return true;
     });
 
-  END_TIMER(t, find_bucket_time);
   assert(min_index >= 0);
+  auto& centroid = centroids[min_index];
+  for (int i = 0; i < input_vec_float.size(); i++) {
+    centroid.sum_vec[i] += input_vec_float[i];
+  }
+  centroid.bucket.push_back(input_vec);
+  END_TIMER(t, find_bucket_time);
   return min_index;
 }
 
@@ -114,7 +120,7 @@ void initialize_centroids(VectorAdapter &adapter_centroids, VectorAdapter &adapt
   while (random_indices.size() < num_to_assign) {
     size_t random_index = dist(gen);
     if (random_indices.insert(random_index).second) {
-      //std::cout << "Random index chosen: " << random_index << std::endl;
+      // std::cout << "Random index chosen: " << random_index << std::endl;
     }
   }
 
@@ -137,32 +143,17 @@ void initialize_centroids(VectorAdapter &adapter_centroids, VectorAdapter &adapt
   std::cout << "Centroid initialization complete. Total assigned: " << num_to_assign << std::endl;
 }
 
-void update_one_centroid(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, std::vector<const BlobState *> bucket, const VectorRecord::Key &key, size_t vector_size) {
+void update_one_centroid(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, Centroid& centroid, const VectorRecord::Key &key, size_t vector_size) {
   ZoneScoped;
-  if (bucket.empty()) {
+  if (centroid.bucket.empty()) {
     return;
   }
-  int num_vec = bucket.size();
-
-  std::vector<float> sum_vec(vector_size, 0.0);
-
-  for (int i = 0; i < num_vec; i++) {
-    blob_adapter.LoadBlob(
-      bucket[i],
-      [&](std::span<const uint8_t> blob) {
-        assert(vector_size == blob.size() / sizeof(float));
-        std::span<const float> temp(reinterpret_cast<const float *>(blob.data()), blob.size() / sizeof(float));
-        for (size_t j = 0; j < vector_size; j++) {
-          sum_vec[j] += temp[j];
-        }
-      });
-  }
+  int num_vec = centroid.bucket.size();
 
   for (size_t i = 0; i < vector_size; i++) {
-    sum_vec[i] /= num_vec;
+    centroid.sum_vec[i] /= num_vec;
   }
-
-  std::span<u8> new_centroid_data(reinterpret_cast<u8 *>(sum_vec.data()), sum_vec.size() * sizeof(float));
+  std::span<u8> new_centroid_data(reinterpret_cast<u8 *>(centroid.sum_vec.data()), centroid.sum_vec.size() * sizeof(float));
 
   adapter_centroids.Update({key}, new_centroid_data);
 }
@@ -185,9 +176,9 @@ void IVFFlatIndex::build_index() {
       vectors[idx] = reinterpret_cast<const BlobState *>(vectors_storage[idx].data());
       idx++;
       return true;
-  });
+    });
   START_TIMER(t);
- // std::cout << "count: " << adapter_main.Count() << std::endl;
+  // std::cout << "count: " << adapter_main.Count() << std::endl;
   initialize_centroids(adapter_centroids, adapter_main, blob_adapter, num_centroids);
   assign_vectors_to_centroids();
   END_TIMER(t, build_index_time);
@@ -198,10 +189,10 @@ void IVFFlatIndex::build_index() {
 
 void IVFFlatIndex::update_centroids() {
   ZoneScoped;
-  //std::cout << "update centroids" <<  std::endl;
+  // std::cout << "update centroids" <<  std::endl;
   START_TIMER(t);
   for (size_t i = 0; i < centroids.size(); i++) {
-    update_one_centroid(adapter_centroids, blob_adapter, centroids[i].bucket, {(int)i}, vector_size);
+    update_one_centroid(adapter_centroids, blob_adapter, centroids[i], {(int)i}, vector_size);
   }
   END_TIMER(t, update_centroids_time);
 }
@@ -210,14 +201,14 @@ void IVFFlatIndex::assign_vectors_to_centroids() {
   ZoneScoped;
   START_TIMER(t);
   for (size_t i = 0; i < num_iter; i++) {
-   // std::cout << "i = " << i << std::endl;
+    // std::cout << "i = " << i << std::endl;
     for (size_t i = 0; i < centroids.size(); i++) {
       centroids[i].bucket.clear();
+      centroids[i].sum_vec = std::vector<float>(vector_size, 0);
     }
 
     for (size_t i = 0; i < vectors.size(); i++) {
-      int bucket_num = find_bucket(adapter_centroids, blob_adapter, vectors[i]);
-      centroids[bucket_num].bucket.push_back(vectors[i]);
+        (void)find_bucket(adapter_centroids, blob_adapter, vectors[i], centroids);
     }
     update_centroids();
   }

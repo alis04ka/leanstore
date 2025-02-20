@@ -51,7 +51,7 @@ DEFINE_bool(benchmark_lookup_perf, true, "wheter to run lookup benchmarks");
 DEFINE_uint64(num_query_vectors, 1000, "how many lookup requests to send");
 DEFINE_uint64(num_result_vectors, 10, "how many results the lookup should return");
 
-static unsigned int seed = std::chrono::steady_clock::now().time_since_epoch().count();
+static unsigned int seed =  42;
 static std::mt19937 gen(seed);
 
 // Utility function to print timing
@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
   std::vector<std::vector<float>> query_vectors;
   query_vectors.reserve(FLAGS_num_query_vectors);
 
-  std::cout << "Starting generating benchmark Data for" + FLAGS_index_type + "\n";
+  std::cout << "Starting generating benchmark data for " + FLAGS_index_type + "\n";
   std::cout << "Vector size: " << FLAGS_vector_size << "\n";
   std::cout << "Number of vectors: " << FLAGS_num_vectors << "\n";
   std::cout << "stddev: " << FLAGS_std_dev << "\n";
