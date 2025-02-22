@@ -105,13 +105,6 @@ ZoneScoped;
   return candidates;
 }
 
-std::vector<size_t> NSWIndex::search_layer(BlobAdapter &adapter, const BlobState *base_vector, size_t limit, const std::vector<size_t> &entry_points) {
-  ZoneScoped;
-  std::vector<float> input_vec_float = adapter.GetFloatVectorFromBlobState(base_vector);
-  return search_layer(adapter, input_vec_float, limit, entry_points);
-  
-}
-
 auto NSWIndex::add_vertex(size_t vertex_id) {
   in_vertices_.push_back(vertex_id);
 }
@@ -194,6 +187,7 @@ size_t HNSWIndex::add_vertex(const BlobState *vec) {
 
 void HNSWIndex::insert_vector_entry(const BlobState *key) {
   ZoneScoped;
+  auto float_key = blob_adapter.GetFloatVectorFromBlobState(key);
   std::uniform_real_distribution<double> level_dist(0.0, 1.0);
   auto vertex_id = add_vertex(key);
   int target_level = static_cast<int>(std::floor(-std::log(level_dist(generator_)) * m_l_));
@@ -203,16 +197,14 @@ void HNSWIndex::insert_vector_entry(const BlobState *key) {
     std::vector<size_t> entry_points{layers_[layers_.size() - 1].default_entry_point()};
     int level = layers_.size() - 1;
     for (; level > target_level; level--) {
-      // std::cout << "level " << level << std::endl;
-      nearest_elements = layers_[level].search_layer(blob_adapter, key, ef_search_, entry_points);
-      nearest_elements = select_neighbors_blob(blob_adapter, key, nearest_elements, vertices_, 1);
+      nearest_elements = layers_[level].search_layer(blob_adapter, float_key, ef_search_, entry_points);
+      nearest_elements = select_neighbors_float(blob_adapter, float_key, nearest_elements, vertices_, 1);
       entry_points = {nearest_elements[0]};
     }
     for (; level >= 0; level--) {
       auto &layer = layers_[level];
-      // std::cout << "level " << level << std::endl;
-      nearest_elements = layer.search_layer(blob_adapter, key, ef_construction_, entry_points);
-      auto neighbors = select_neighbors_blob(blob_adapter, key, nearest_elements, vertices_, m_max_);
+      nearest_elements = layer.search_layer(blob_adapter, float_key, ef_construction_, entry_points);
+      auto neighbors = select_neighbors_float(blob_adapter, float_key, nearest_elements, vertices_, m_max_);
       layer.add_vertex(vertex_id);
       for (const auto neighbor : neighbors) {
         layer.connect(vertex_id, neighbor);

@@ -69,11 +69,15 @@ int find_bucket(VectorAdapter &adapter_centroids, BlobAdapter &blob_adapter, con
     });
 
   assert(min_index >= 0);
-  auto& centroid = centroids[min_index];
-  for (int i = 0; i < input_vec_float.size(); i++) {
-    centroid.sum_vec[i] += input_vec_float[i];
+  {
+    ZoneScopedN("accumulate new centroid");
+    auto& centroid = centroids[min_index];
+    for (int i = 0; i < input_vec_float.size(); i++) {
+      centroid.sum_vec[i] += input_vec_float[i];
+    }
+    centroid.bucket.push_back(input_vec);
+
   }
-  centroid.bucket.push_back(input_vec);
   END_TIMER(t, find_bucket_time);
   return min_index;
 }

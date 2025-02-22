@@ -15,7 +15,6 @@ private:
 
 public:
   NSWIndex(std::vector<const BlobState *> &vertices);
-  std::vector<size_t> search_layer(BlobAdapter &adapter, const BlobState *input_vector, size_t limit, const std::vector<size_t> &entry_points);
   std::vector<size_t> search_layer(BlobAdapter &adapter, const std::vector<float> &base_vector, size_t limit, const std::vector<size_t> &entry_points);
   void insert(VectorAdapter &db, const BlobState *vec, size_t vertex_id, size_t ef_construction, size_t m);
 
