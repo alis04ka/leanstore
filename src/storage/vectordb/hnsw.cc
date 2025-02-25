@@ -124,8 +124,7 @@ HNSWIndex::HNSWIndex(VectorAdapter db, BlobAdapter blob_adapter, size_t ef_const
     : db(db), blob_adapter(blob_adapter), ef_construction_(ef_construction), ef_search_(ef_search), m_max_(m_max) {
 
   m_l_ = 1.0 / std::log(m_max);
-  std::random_device rand_dev;
-  generator_ = std::mt19937(rand_dev());
+  generator_ = std::mt19937(42);
 }
 
 void HNSWIndex::build_index() {
