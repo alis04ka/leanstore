@@ -82,6 +82,7 @@ thread_local std::array<u8, BlobState::MallocSize(ExtentList::EXTENT_CNT_MASK)> 
 // -------------------------------------------------------------------------------------
 PageAliasGuard::PageAliasGuard(buffer::BufferManager *buffer, const BlobState &blob, u64 required_load_size)
     : buffer_(buffer) {
+  ZoneScoped;
   // FLAGS_blob_normal_buffer_pool: 2nd extra overhead
   if (FLAGS_blob_normal_buffer_pool) {
     ptr_       = reinterpret_cast<u8 *>(malloc(required_load_size));
@@ -486,8 +487,11 @@ void BlobManager::LoadBlob(const BlobState *blob, u64 required_load_size, const 
   if (required_load_size > blob->blob_size || required_load_size == 0) { required_load_size = blob->blob_size; }
 
   LoadBlobContent(blob, required_load_size);
-  auto guard = PageAliasGuard(buffer_, *blob, required_load_size);
-  cb({guard.GetPtr(), required_load_size});
+  {
+    ZoneScopedN("Acquire Lock");
+    auto guard = PageAliasGuard(buffer_, *blob, required_load_size);
+    cb({guard.GetPtr(), required_load_size});
+  }
 }
 
 void BlobManager::UnloadAllBlobs() {

@@ -112,8 +112,7 @@ HNSWIndex::HNSWIndex(std::vector<std::vector<float>> &&vectors, size_t ef_constr
   layers_.emplace_back(vertices_);
   std::cout << "m max is " << m_max << std::endl;
   m_l_ = 1.0 / std::log(m_max);
-  std::random_device rand_dev;
-  generator_ = std::mt19937(rand_dev());
+  generator_ = std::mt19937(42);
 }
 
 void HNSWIndex::build_index_vec() {

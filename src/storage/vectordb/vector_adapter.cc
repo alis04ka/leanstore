@@ -1,4 +1,5 @@
 #include "storage/vectordb/vector_adapter.h"
+#include <tracy/Tracy.hpp>
 #include "storage/vectordb/blob_adapter.h"
 
 namespace leanstore::storage::vector {
@@ -38,8 +39,8 @@ void VectorAdapter::InsertVectorRecord(const VectorRecord::Key &r_key, const Vec
   tree_->Insert({key, len}, span);
 }
 
-
 auto VectorAdapter::LookUp(const VectorRecord::Key &r_key, const AccessVectorFunc &fn) -> bool {
+  ZoneScoped;
   u8 key[VectorRecord::MaxFoldLength()];
   auto len = VectorRecord::FoldKey(key, r_key);
   bool success =
