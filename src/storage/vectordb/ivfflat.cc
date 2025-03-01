@@ -116,8 +116,7 @@ void initialize_centroids(VectorAdapter &adapter_centroids, VectorAdapter &adapt
   size_t num_to_assign = std::min(num_centroids, num_vectors);
   std::cout << "Centroids to assign: " << num_centroids << std::endl;
 
-  std::random_device rd;
-  std::mt19937 gen(rd());
+  std::mt19937 gen(42);
   std::unordered_set<size_t> random_indices;
   std::uniform_int_distribution<size_t> dist(0, num_vectors - 1);
 
