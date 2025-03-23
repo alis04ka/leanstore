@@ -171,8 +171,8 @@ std::vector<const BlobState *> HNSWIndex::find_n_closest_vectors(const std::vect
   START_TIMER(t);
   std::vector<size_t> neighbors = scan_vector_entry(input_vec, n);
   std::vector<const BlobState *> states_res;
-  for (size_t i = 0; i < neighbors.size(); i++) {
-    states_res.push_back(vectors[i]);
+  for (auto neighbor : neighbors) {
+    states_res.push_back(vectors[neighbor]);
   }
   END_TIMER(t, search_time);
   return states_res;

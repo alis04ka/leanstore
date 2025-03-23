@@ -7,6 +7,8 @@ float distance_vec(std::span<const float> span1, std::span<const float> span2) {
   ZoneScoped;
   //std::cout << "distance vec" <<  std::endl;
   assert(span1.size() == span2.size());
+  // std::cout << "size1: " << span1.size() << std::endl;
+  // std::cout << "size2: " << span2.size() <<  std::endl;
 
   size_t size = span1.size();
   size_t simd_width = 8;
@@ -110,8 +112,76 @@ float knn_index_error(BlobAdapter &db, const std::vector<float> &query, std::vec
     error_blob_index += distance_vec(query, db.GetFloatVectorFromBlobState(state));
   }
   error_blob_index /= (float)blob_index_res.size();
+  // std::cout << "error knn " << error_knn << std::endl;
+  // std::cout<< "error index " << error_blob_index << std::endl;
 
   return error_knn / error_blob_index;
 }
+
+// float knn_index_error(BlobAdapter &db, const std::vector<float> &query, std::vector<std::span<float>> knn_res, const std::vector<const BlobState *> &blob_index_res) {
+//   int count = 0;
+
+//   for (const auto state : blob_index_res) {
+//     // Check if the vector from index_res is present in knn_res
+//      auto index_vec = db.GetFloatVectorFromBlobState(state);
+//       bool found = false;
+//       for (const auto& knn_vec : knn_res) {
+//           if (knn_vec.size() == index_vec.size() &&
+//               std::equal(knn_vec.begin(), knn_vec.end(), index_vec.begin())) {
+//               found = true;
+//               break;
+//           }
+//       }
+//       if (found) {
+//           count++;
+//       }
+//   }
+
+//   return static_cast<float>(count) / knn_res.size();
+// }
+
+
+float knn_vec_error(const std::vector<float> &query, std::vector<std::span<float>> knn_res,  std::vector<std::vector<float>> index_res) {
+  assert(knn_res.size() == index_res.size());
+
+  float error_knn = 0.0f;
+  for (auto vec : knn_res) {
+    error_knn += distance_vec(query, vec);
+  }
+  error_knn /= (float)knn_res.size();
+
+  float error_blob_index = 0.0f;
+  for (auto vec : index_res) {
+    error_blob_index += distance_vec(query, vec);
+  }
+  error_blob_index /= (float)index_res.size();
+  // std::cout << "error knn " << error_knn << std::endl;
+  // std::cout<< "error index " << error_blob_index << std::endl;
+
+  return error_knn / error_blob_index;
+}
+
+
+// float knn_vec_error(const std::vector<float> &query, std::vector<std::span<float>> knn_res, std::vector<std::vector<float>> index_res) {
+//   int count = 0;
+
+//     for (const auto& index_vec : index_res) {
+//         // Check if the vector from index_res is present in knn_res
+//         bool found = false;
+//         for (const auto& knn_vec : knn_res) {
+//             if (knn_vec.size() == index_vec.size() &&
+//                 std::equal(knn_vec.begin(), knn_vec.end(), index_vec.begin())) {
+//                 found = true;
+//                 break;
+//             }
+//         }
+//         if (found) {
+//             count++;
+//         }
+//     }
+
+//     return static_cast<float>(count) / knn_res.size();
+// }
+
 
 } // namespace leanstore::storage::vector

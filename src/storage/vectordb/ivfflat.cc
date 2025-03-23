@@ -200,7 +200,7 @@ void IVFFlatIndex::update_centroids() {
   END_TIMER(t, update_centroids_time);
 }
 
-void IVFFlatIndex::assign_vectors_to_centroids() {
+void IVFFlatIndex:: assign_vectors_to_centroids() {
   ZoneScoped;
   START_TIMER(t);
   for (size_t i = 0; i < num_iter; i++) {
@@ -224,7 +224,7 @@ std::vector<const BlobState *> IVFFlatIndex::find_n_closest_vectors(const std::v
   std::vector<int> indices = find_k_closest_centroids(adapter_centroids, blob_adapter, input_vec, num_probe_centroids);
   std::vector<const BlobState *> relevant_vector_states;
   for (size_t i = 0; i < indices.size(); i++) {
-    std::vector<const BlobState *> bucket = centroids[i].bucket;
+    std::vector<const BlobState *> bucket = centroids[indices[i]].bucket;
     for (size_t j = 0; j < bucket.size(); j++) {
       relevant_vector_states.push_back(bucket[j]);
     }

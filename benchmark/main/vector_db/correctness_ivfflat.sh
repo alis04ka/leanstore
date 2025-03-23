@@ -5,11 +5,11 @@
                             -blob_logging_variant=1 \
                             --index_type="ivfflat" \
                             --benchmark_baseline=true \
-                             -std_dev=5.0 \
---vector_size=8192 \
---num_vectors=3000 \
---num_centroids=192 \
---num_probe_centroids=36 \
+                            --std_dev=100.0 \
+--vector_size=1024 \
+--num_vectors=5000 \
+--num_centroids=64 \
+--num_probe_centroids=12 \
 --num_iterations=10 \
---num_query_vectors=3000 \
+--num_query_vectors=1000 \
 --num_result_vectors=20 \

@@ -16,8 +16,7 @@ private:
 public:
   NSWIndex(std::vector<const BlobState *> &vertices);
   std::vector<size_t> search_layer(BlobAdapter &adapter, const std::vector<float> &base_vector, size_t limit, const std::vector<size_t> &entry_points);
-  void insert(VectorAdapter &db, const BlobState *vec, size_t vertex_id, size_t ef_construction, size_t m);
-
+  //void insert(VectorAdapter &db, const BlobState *vec, size_t vertex_id, size_t ef_construction, size_t m);
   void connect(size_t vertex_a, size_t vertex_b);
   auto add_vertex(size_t vertex_id);
   auto default_entry_point() -> size_t { return in_vertices_[0]; }
@@ -52,7 +51,6 @@ public:
   std::vector<size_t> scan_vector_entry(const std::vector<float> &base_vector, size_t limit);
   void insert_vector_entry(const BlobState *vec);
   std::vector<const BlobState *> find_n_closest_vectors(const std::vector<float> &input_vec, size_t n) override;
-
   size_t add_vertex(const BlobState *vec);
 };
 

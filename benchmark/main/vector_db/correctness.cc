@@ -23,6 +23,11 @@ IndexType parse_index_type(const std::string &type) {
     return IndexType::HNSW;
 }
 
+void print_vector(std::span<float> vec) {
+  for (auto elem : vec) { std::cout << elem << ", "; }
+  std::cout << "\n";
+}
+
 DEFINE_string(index_type, "ivfflat", "what index to use for benchmarks");
 
 // IVFFlat flags
@@ -78,7 +83,7 @@ int main(int argc, char **argv) {
   VectorAdapter adapter_centroids = VectorAdapter::CreateVectorAdapter<CentroidType>(*leanstore);
   BlobAdapter blob_adapter(*leanstore);
 
-  std::normal_distribution<float> dist(0.0, FLAGS_std_dev);
+  //std::normal_distribution<float> dist(-100, 100);
 
   std::vector<std::vector<float>> embedding_vectors;
   embedding_vectors.reserve(FLAGS_num_vectors);
@@ -90,22 +95,28 @@ int main(int argc, char **argv) {
   std::cout << "Vector_size: " << FLAGS_vector_size << "\n";
   std::cout << "stddev: " << FLAGS_std_dev << "\n";
 
+
   leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
     leanstore->StartTransaction();
-
+    std::uniform_int_distribution<> dis(-FLAGS_num_vectors,FLAGS_num_vectors);
     for (uint64_t i = 0; i < FLAGS_num_vectors; i++) {
-      auto vector = create_random_vector(dist);
+      int rand_index = dis(gen);
+      // auto vector = create_random_vector(dist);
+      std::vector<float> vector(FLAGS_vector_size, (((float)rand_index)/FLAGS_num_vectors));
       std::span<u8> data(reinterpret_cast<u8 *>(vector.data()), vector.size() * sizeof(float));
       const leanstore::BlobState *state = blob_adapter.RegisterBlob(data);
       adapter_main.InsertVectorRecord({static_cast<int>(i)}, *reinterpret_cast<const VectorRecord *>(state));
 
-      if (FLAGS_benchmark_baseline) {
-        embedding_vectors.push_back(std::move(vector));
-      }
+
+      embedding_vectors.push_back(std::move(vector));
+
     }
 
     for (uint64_t i = 0; i < FLAGS_num_query_vectors; i++) {
-      auto vector = create_random_vector(dist);
+      // auto vector = create_random_vector(dist);
+      int rand_index = dis(gen);
+      std::cout << rand_index << "\n";
+      std::vector<float> vector(FLAGS_vector_size, ((((float)rand_index)/FLAGS_num_vectors)));
       query_vectors.push_back(std::move(vector));
     }
 
@@ -133,27 +144,7 @@ int main(int argc, char **argv) {
     }
   };
 
-  // auto create_base_index = [&]() -> std::unique_ptr<BaseVectorIndex> {
-  //   switch (indexType) {
-  //   case IndexType::IVFFlat: {
-  //     std::cout << "Bulding IVFFlat Base Index:\n";
-  //     std::cout << "num_centroids: " << FLAGS_num_centroids << "\n";
-  //     std::cout << "num_probe_centroids: " << FLAGS_num_probe_centroids << "\n";
-  //     std::cout << "num_iterations: " << FLAGS_num_iterations << "\n";
-  //     return std::make_unique<vec::IVFFlatIndexVec>(FLAGS_num_centroids, FLAGS_num_probe_centroids, FLAGS_vector_size, FLAGS_num_iterations, std::move(embedding_vectors));
-  //   }
-  //   case IndexType::HNSW: {
-  //     std::cout << "Bulding HNSW Base Index:\n";
-  //     std::cout << "vector_size: " << FLAGS_vector_size << "\n";
-  //     std::cout << "ef_construction: " << FLAGS_ef_construction << "\n";
-  //     std::cout << "ef_search: " << FLAGS_ef_search << "\n";
-  //     std::cout << "m_max: " << FLAGS_m_max << "\n";
-  //     return std::make_unique<vec::HNSWIndex>(std::move(embedding_vectors), FLAGS_ef_construction, FLAGS_ef_search, FLAGS_m_max);
-  //   }
-  //   }
-  // };
 
-  // std::unique_ptr<BaseVectorIndex> base_index = create_base_index();
 
   std::unique_ptr<VectorIndex> blob_index = create_blob_index();
   std::unique_ptr<BaseVectorIndex> knn_index_vec = std::make_unique<vec::KnnIndexVec>(FLAGS_vector_size, std::move(embedding_vectors));
@@ -165,9 +156,6 @@ int main(int argc, char **argv) {
     leanstore->CommitTransaction();
   });
 
-  // if (FLAGS_benchmark_baseline) {
-  //   base_index->build_index_vec();
-  // }
 
   std::cout << "Starting correctness check \n";
   std::cout << "num_query_vectors: " << FLAGS_num_query_vectors << "\n";
@@ -177,14 +165,55 @@ int main(int argc, char **argv) {
     leanstore->StartTransaction();
     float total_error = 0.0;
     for (uint64_t i = 0; i < FLAGS_num_query_vectors; i++) {
+      // std::cout << "query vector: \n";
+      // print_vec(query_vectors[i]);
       auto states_res = blob_index->find_n_closest_vectors(query_vectors[i], FLAGS_num_result_vectors);
+      // std::cout << "index vector: \n";
+      // print_vec(blob_adapter.GetFloatVectorFromBlobState(states_res[0]));
+      // print_vec(blob_adapter.GetFloatVectorFromBlobState(states_res[1]));
+      // print_vec(blob_adapter.GetFloatVectorFromBlobState(states_res[2]));
+
       auto knn_res = knn_index_vec->find_n_closest_vectors_vec(query_vectors[i], FLAGS_num_result_vectors);
       total_error += knn_index_error(blob_adapter, query_vectors[i], knn_res, states_res);
+      // std::cout << "knn vector: \n";
+      // print_vec(knn_res[0]);
+      // print_vec(knn_res[1]);
+      // print_vec(knn_res[2]);
     }
     float mean_error = total_error / FLAGS_num_query_vectors;
-    std::cout << "Mean raccuracy for blob index: " << mean_error << std::endl;
+    std::cout << "Mean accuracy for blob index: " << mean_error << std::endl;
     leanstore->CommitTransaction();
   });
+
+
+
+  std::cout << "Starting correctness2 check \n";
+  std::cout << "num_query_vectors: " << FLAGS_num_query_vectors << "\n";
+  std::cout << "num_result_vectors: " << FLAGS_num_result_vectors << "\n";
+
+  leanstore->worker_pool.ScheduleSyncJob(0, [&]() {
+    leanstore->StartTransaction();
+
+    std::vector<std::vector<float>> random_vecs;
+    random_vecs.reserve(FLAGS_num_result_vectors);
+    std::uniform_int_distribution<int> dist(0, FLAGS_num_vectors - 1);
+    for (size_t i = 0; i < FLAGS_num_result_vectors; i++) {
+      int rand_index = dist(gen);
+      auto vec = adapter_main.GetFloatVector({rand_index});
+      random_vecs.push_back(vec);
+    }
+
+    float total_error = 0.0;
+    for (uint64_t i = 0; i < FLAGS_num_query_vectors; i++) {
+      auto knn_res = knn_index_vec->find_n_closest_vectors_vec(query_vectors[i], FLAGS_num_result_vectors);
+      total_error += knn_vec_error(query_vectors[i], knn_res, random_vecs);
+    }
+    float mean_error = total_error / FLAGS_num_query_vectors;
+    std::cout << "Mean accuracy for random vecs: " << mean_error << std::endl;
+    leanstore->CommitTransaction();
+  });
+
+
 
   return 0;
 }
